@@ -1,13 +1,108 @@
-// Exemple d'intégration dans cmd/server/main.go
+package main
+
 import (
-    "net/http"
-    "github.com/adlanegrm-oss/einvoice-saas/internal/handler"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/adlanegrm-oss/einvoice-saas/internal/handler"
 )
 
-// Dans votre fonction main() ou configuration des routes :
-func RegisterRoutes() {
-    valHandler := handler.NewValidationHandler()
+const defaultPort = "8080"
+const validAPIKey = "secret-api-key-123"
 
-    // Route API protégée par votre middleware d'authentification existant
-    http.HandleFunc("/api/v1/validate", valHandler.HandleValidateDocument)
+// apiKeyAuthMiddleware protège les routes API en vérifiant la présence de la clé API
+func apiKeyAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		apiKey := r.Header.Get("X-API-Key")
+		if apiKey == "" {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				apiKey = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+
+		if apiKey != validAPIKey {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Accès non autorisé : Clé API manquante ou invalide",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// loggingMiddleware enregistre les requêtes entrantes
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		log.Printf("[%s] %s - %v", r.Method, r.URL.Path, time.Since(start))
+	})
+}
+
+func main() {
+	mux := http.NewServeMux()
+
+	// Initialisation des handlers
+	valHandler := handler.NewValidationHandler()
+
+	// 1. Service des fichiers statiques de l'interface Web (Front-Office & Back-Office)
+	fs := http.FileServer(http.Dir("web"))
+	mux.Handle("/", fs)
+
+	// 2. Health check (Publique)
+	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "UP",
+			"time":   time.Now().Format(time.RFC3339),
+		})
+	})
+
+	// 3. Routes API Protégées par Clé API
+	// Route de validation multi-formats
+	mux.HandleFunc("/api/v1/validate", apiKeyAuthMiddleware(valHandler.HandleValidateDocument))
+
+	// Endpoint Factures
+	mux.HandleFunc("/api/v1/invoices", apiKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Endpoint Invoices opérationnel",
+		})
+	}))
+
+	// Endpoint Rapports
+	mux.HandleFunc("/api/v1/reports", apiKeyAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Endpoint Reports opérationnel",
+		})
+	}))
+
+	// Configuration du serveur HTTP
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      loggingMiddleware(mux),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	log.Printf("🚀 Serveur démarré sur le port %s (http://localhost:%s)", port, port)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("❌ Erreur de démarrage : %v", err)
+	}
 }
