@@ -45,7 +45,7 @@ func TestValidateAndListInvoices(t *testing.T) {
 		t.Errorf("Facture valide : code attendu 200, reçu %v", rr1.Code)
 	}
 
-	// 2. Tenter de valider une facture invalide (elle ne doit pas être enregistrée)
+	// 2. Tenter de valider une facture invalide
 	invalidJSON := `{"id":"2", "number":"INV-002", "customer":"Client B", "items": []}`
 	req2, _ := http.NewRequest("POST", "/invoices/validate", strings.NewReader(invalidJSON))
 	rr2 := httptest.NewRecorder()
