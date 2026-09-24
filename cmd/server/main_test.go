@@ -1,4 +1,4 @@
-package main
+mpackage main
 
 import (
 	"net/http"
@@ -22,10 +22,11 @@ func TestHealthHandler(t *testing.T) {
 	}
 }
 
-func TestValidateInvoiceHandler(t *testing.T) {
-	handler := http.HandlerFunc(ValidateInvoiceHandler)
+func TestValidateAndListInvoices(t *testing.T) {
+	validateHandler := http.HandlerFunc(ValidateInvoiceHandler)
+	listHandler := http.HandlerFunc(ListInvoicesHandler)
 
-	// Cas 1 : Facture valide avec items
+	// 1. Valider et enregistrer une facture valide
 	validJSON := `{
 		"id": "1",
 		"number": "INV-001",
@@ -36,19 +37,28 @@ func TestValidateInvoiceHandler(t *testing.T) {
 	}`
 	req1, _ := http.NewRequest("POST", "/invoices/validate", strings.NewReader(validJSON))
 	rr1 := httptest.NewRecorder()
-	handler.ServeHTTP(rr1, req1)
+	validateHandler.ServeHTTP(rr1, req1)
 
 	if rr1.Code != http.StatusOK {
 		t.Errorf("Facture valide : code attendu 200, reçu %v", rr1.Code)
 	}
 
-	// Cas 2 : Facture invalide (sans articles)
+	// 2. Tenter de valider une facture invalide (elle ne doit pas être enregistrée)
 	invalidJSON := `{"id":"2", "number":"INV-002", "customer":"Client B", "items": []}`
 	req2, _ := http.NewRequest("POST", "/invoices/validate", strings.NewReader(invalidJSON))
 	rr2 := httptest.NewRecorder()
-	handler.ServeHTTP(rr2, req2)
+	validateHandler.ServeHTTP(rr2, req2)
 
 	if rr2.Code != http.StatusUnprocessableEntity {
 		t.Errorf("Facture invalide : code attendu 422, reçu %v", rr2.Code)
+	}
+
+	// 3. Récupérer la liste des factures
+	req3, _ := http.NewRequest("GET", "/invoices", nil)
+	rr3 := httptest.NewRecorder()
+	listHandler.ServeHTTP(rr3, req3)
+
+	if rr3.Code != http.StatusOK {
+		t.Errorf("GET /invoices : code attendu 200, reçu %v", rr3.Code)
 	}
 }
