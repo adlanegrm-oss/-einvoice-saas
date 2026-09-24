@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,11 +9,37 @@ import (
 
 	"github.com/adlanegrm-oss/einvoice-saas/internal/handler"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/repository"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/worker"
+	_ "modernc.org/sqlite"
 )
 
+func setupTestHandler(t *testing.T) (*handler.InvoiceHandler, func()) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Impossible d'ouvrir la base en mémoire : %v", err)
+	}
+
+	repo, err := repository.NewSQLiteInvoiceRepository(db)
+	if err != nil {
+		db.Close()
+		t.Fatalf("Impossible d'initialiser le repository : %v", err)
+	}
+
+	pool := worker.NewPool(1, 10)
+
+	h := handler.NewInvoiceHandler(repo, pool)
+
+	cleanup := func() {
+		pool.Stop()
+		db.Close()
+	}
+
+	return h, cleanup
+}
+
 func TestHealthHandler(t *testing.T) {
-	repo := repository.NewMemoryInvoiceRepository()
-	h := handler.NewInvoiceHandler(repo)
+	h, cleanup := setupTestHandler(t)
+	defer cleanup()
 
 	req, err := http.NewRequest("GET", "/health", nil)
 	if err != nil {
@@ -28,8 +55,8 @@ func TestHealthHandler(t *testing.T) {
 }
 
 func TestValidateAndListInvoices(t *testing.T) {
-	repo := repository.NewMemoryInvoiceRepository()
-	h := handler.NewInvoiceHandler(repo)
+	h, cleanup := setupTestHandler(t)
+	defer cleanup()
 
 	// 1. Valider et enregistrer une facture valide
 	validJSON := `{
