@@ -1,18 +1,16 @@
 openapi: 3.0.3
 info:
-  title: e-Invoice SaaS API
+  title: Electronic Invoicing Validation SaaS API
   description: >
-    API de facturation électronique haute performance en Go (Clean Architecture).
-    Supporte la validation multi-format (Factur-X/CII, UBL, EDIFACT, IDDoc, PDF signé/PAdES)
-    et la gestion du registre de factures.
+    API B2B de Facturation Électronique Multi-Normes (Factur-X/CII, UBL, EDIFACT, IDDoc, PDF Signé PAdES)
+    avec gestion du registre, rapports financiers et module de Clearance fiscale.
   version: 1.0.0
-  contact:
-    name: Adlane Agrimi
-    url: https://github.com/adlanegrm-oss/einvoice-saas
 
 servers:
   - url: http://localhost:8080
-    description: Serveur de développement local
+    description: Serveur Local de Développement
+  - url: https://api.einvoice-saas.com
+    description: Serveur de Production
 
 security:
   - ApiKeyAuth: []
@@ -21,12 +19,12 @@ security:
 paths:
   /api/v1/health:
     get:
-      summary: Vérification de l'état du service (Healthcheck)
-      description: Route publique indiquant la disponibilité du serveur HTTP et de la base de données.
+      summary: Bilan de santé du service
+      description: Endpoint public pour vérifier la santé de l'API et la connexion à SQLite.
       security: []
       responses:
         '200':
-          description: Service opérationnel
+          description: Le service fonctionne normalement.
           content:
             application/json:
               schema:
@@ -34,104 +32,185 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: UP
-                  time:
+                    example: "up"
+                  database:
+                    type: string
+                    example: "connected"
+                  timestamp:
                     type: string
                     format: date-time
-                    example: "2026-09-24T02:50:00Z"
+                    example: "2026-09-24T16:30:00Z"
 
   /api/v1/validate:
     post:
-      summary: Validation et détection unifiée de documents e-invoicing
-      description: >
-        Analyse le contenu binaire d'un fichier (Factur-X, UBL XML, EDIFACT, IDDoc ou PDF signé)
-        et retourne un diagnostic complet de conformité.
+      summary: Validation binaire unifiée multi-formats
+      description: Valide la conformité d'un fichier de facture électronique (Factur-X, UBL, EDIFACT, IDDoc, PAdES).
       requestBody:
         required: true
         content:
-          application/xml:
+          multipart/form-data:
             schema:
-              type: string
-              format: binary
-          application/pdf:
-            schema:
-              type: string
-              format: binary
-          text/plain:
-            schema:
-              type: string
-              format: binary
+              type: object
+              required:
+                - format
+                - file
+              properties:
+                format:
+                  type: string
+                  enum: [FACTUR-X, UBL, EDIFACT, IDDOC, PADES]
+                  example: "FACTUR-X"
+                file:
+                  type: string
+                  format: binary
+                  description: Fichier XML ou PDF à valider.
       responses:
         '200':
-          description: Document valide
+          description: Résultat de la validation binaire et structurelle.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FileValidationResult'
-        '422':
-          description: Document invalide ou format non conforme
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FileValidationResult'
+                $ref: '#/components/schemas/ValidationResult'
+        '400':
+          description: Format de fichier invalide ou corrompu.
         '401':
-          $ref: '#/components/responses/UnauthorizedError'
+          description: Non autorisé (Clé API ou Token manquant).
 
   /api/v1/invoices:
     get:
-      summary: Liste l'ensemble des factures enregistrées
+      summary: Liste des factures du registre
+      description: Récupère la liste des factures enregistrées dans la base de données.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DRAFT, PENDING_CLEARANCE, CLEARED, REJECTED]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
       responses:
         '200':
-          description: Liste des factures
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Invoice'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-    post:
-      summary: Enregistrer et valider une nouvelle facture
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-      responses:
-        '200':
-          description: Facture validée et enregistrée
-        '400':
-          description: Erreur de validation du modèle
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /api/v1/reports:
-    get:
-      summary: Obtenir le rapport financier journalier
-      responses:
-        '200':
-          description: Rapport journalier calculé
+          description: Liste des factures.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  total_invoices:
+                  total:
                     type: integer
                     example: 42
-                  total_ht:
-                    type: number
-                    format: double
-                    example: 12500.50
-                  total_ttc:
-                    type: number
-                    format: double
-                    example: 15000.60
+                  invoices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invoice'
         '401':
-          $ref: '#/components/responses/UnauthorizedError'
+          description: Non autorisé.
+
+    post:
+      summary: Enregistrer une nouvelle facture
+      description: Crée une nouvelle facture dans le registre du SaaS.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceInput'
+      responses:
+        '201':
+          description: Facture créée avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Données de facture invalides.
+        '401':
+          description: Non autorisé.
+
+  /api/v1/invoices/{id}:
+    get:
+      summary: Consulter une facture par ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails complets de la facture.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          description: Facture non trouvée.
+
+    delete:
+      summary: Supprimer / Annuler une facture
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Facture supprimée avec succès.
+        '404':
+          description: Facture non trouvée.
+
+  /api/v1/invoices/{id}/clear:
+    post:
+      summary: Soumettre une facture pour clearance fiscale
+      description: Soumet la facture au service de contrôle transactionnel continu pour validation fiscale et génération du QR code.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Facture validée et scellée (CLEARED) par l'autorité fiscale.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearanceResult'
+        '400':
+          description: Erreur de structure ou calculs de TVA non conformes.
+        '422':
+          description: Rejet explicite par l'autorité fiscale.
+
+  /api/v1/reports:
+    get:
+      summary: Rapport financier journalier
+      description: Calcule les totaux financiers (HT, TVA, TTC) agrégés en SQLite pour une journée donnée.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-09-24"
+      responses:
+        '200':
+          description: Rapport financier quotidien.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialReport'
 
 components:
   securitySchemes:
@@ -139,112 +218,186 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: Clé d'accès API (par défaut `secret-api-key-123`)
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-
-  responses:
-    UnauthorizedError:
-      description: Clé API manquante ou invalide
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Accès non autorisé : Clé API manquante ou invalide"
 
   schemas:
-    FileValidationResult:
+    ValidationResult:
       type: object
       properties:
-        format:
-          type: string
-          enum: [FACTUR-X, UBL, EDIFACT, IDDOC, SIGNED_PDF, UNKNOWN]
-          example: FACTUR-X
-        is_valid:
+        valid:
           type: boolean
           example: true
+        format:
+          type: string
+          example: "FACTUR-X"
         errors:
           type: array
           items:
             type: string
-          example: []
         warnings:
           type: array
           items:
             type: string
-          example: ["Profil minimaliste détecté"]
-        meta:
-          type: object
-          additionalProperties:
-            type: string
-          example:
-            root_element: "CrossIndustryInvoice"
 
-    Invoice:
+    InvoiceInput:
       type: object
       required:
         - invoice_number
-        - seller
-        - buyer
+        - seller_siret
+        - buyer_siret
+        - total_ht
+        - total_tva
+        - total_ttc
         - currency
+        - items
       properties:
-        id:
-          type: string
-          example: "inv-001"
         invoice_number:
           type: string
           example: "INV-2026-001"
-        seller:
-          $ref: '#/components/schemas/Party'
-        buyer:
-          $ref: '#/components/schemas/Party'
+        seller_siret:
+          type: string
+          example: "12345678900012"
+        buyer_siret:
+          type: string
+          example: "98765432100099"
+        issue_date:
+          type: string
+          format: date
+          example: "2026-09-24"
+        due_date:
+          type: string
+          format: date
+          example: "2026-10-24"
         currency:
           type: string
           example: "EUR"
         total_ht:
           type: number
           format: double
-          example: 100.00
+          example: 1000.00
+        total_tva:
+          type: number
+          format: double
+          example: 200.00
         total_ttc:
           type: number
           format: double
-          example: 120.00
+          example: 1200.00
         items:
           type: array
           items:
             $ref: '#/components/schemas/InvoiceItem'
 
-    Party:
+    Invoice:
       type: object
-      required:
-        - name
       properties:
-        name:
+        id:
           type: string
-          example: "Entreprise ABC"
-        vat_number:
+          example: "inv_987654321"
+        invoice_number:
           type: string
-          example: "FR12345678901"
+          example: "INV-2026-001"
+        seller_siret:
+          type: string
+          example: "12345678900012"
+        buyer_siret:
+          type: string
+          example: "98765432100099"
+        status:
+          type: string
+          enum: [DRAFT, PENDING_CLEARANCE, CLEARED, REJECTED]
+          example: "CLEARED"
+        total_ht:
+          type: number
+          format: double
+          example: 1000.00
+        total_tva:
+          type: number
+          format: double
+          example: 200.00
+        total_ttc:
+          type: number
+          format: double
+          example: 1200.00
+        clearance_id:
+          type: string
+          example: "CLR-2026-987654321"
+        cleared_at:
+          type: string
+          format: date-time
+          example: "2026-09-24T16:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-09-24T15:30:00Z"
 
     InvoiceItem:
       type: object
+      required:
+        - description
+        - quantity
+        - unit_price
+        - tva_rate
       properties:
         description:
           type: string
-          example: "Service de conseil IT"
+          example: "Service de développement Go"
         quantity:
-          type: integer
-          example: 1
+          type: number
+          example: 10
         unit_price:
           type: number
-          format: double
           example: 100.00
-        vat_rate:
+        tva_rate:
           type: number
-          format: double
-          example: 20.0
+          example: 20.00
+
+    ClearanceResult:
+      type: object
+      properties:
+        clearance_id:
+          type: string
+          example: "CLR-2026-987654321"
+        status:
+          type: string
+          enum: [CLEARED, REJECTED]
+          example: "CLEARED"
+        qr_code_data:
+          type: string
+          example: "https://tax.gov/verify?id=CLR-2026-987654321"
+        cleared_at:
+          type: string
+          format: date-time
+          example: "2026-09-24T16:00:00Z"
+        errors:
+          type: array
+          items:
+            type: string
+
+    FinancialReport:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-09-24"
+        total_invoices:
+          type: integer
+          example: 15
+        total_ht:
+          type: number
+          example: 15000.00
+        total_tva:
+          type: number
+          example: 3000.00
+        total_ttc:
+          type: number
+          example: 18000.00
+        cleared_count:
+          type: integer
+          example: 12
+        rejected_count:
+          type: integer
+          example: 1
