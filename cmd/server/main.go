@@ -5,8 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
+)
+
+var (
+	store   = []invoice.Invoice{}
+	storeMu sync.RWMutex
 )
 
 // HealthHandler gère la vérification d'état de l'API
@@ -16,7 +22,7 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, `{"status": "ok"}`)
 }
 
-// ValidateInvoiceHandler gère la validation des factures reçues en JSON
+// ValidateInvoiceHandler gère la validation et l'enregistrement des factures
 func ValidateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
@@ -40,6 +46,11 @@ func ValidateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sauvegarde de la facture valide en mémoire
+	storeMu.Lock()
+	store = append(store, inv)
+	storeMu.Unlock()
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "valid",
@@ -47,9 +58,26 @@ func ValidateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ListInvoicesHandler retourne la liste de toutes les factures enregistrées
+func ListInvoicesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	storeMu.RLock()
+	defer storeMu.RUnlock()
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(store)
+}
+
 func main() {
 	http.HandleFunc("/health", HealthHandler)
 	http.HandleFunc("/invoices/validate", ValidateInvoiceHandler)
+	http.HandleFunc("/invoices", ListInvoicesHandler)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS !")
