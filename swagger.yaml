@@ -1,0 +1,250 @@
+openapi: 3.0.3
+info:
+  title: e-Invoice SaaS API
+  description: >
+    API de facturation électronique haute performance en Go (Clean Architecture).
+    Supporte la validation multi-format (Factur-X/CII, UBL, EDIFACT, IDDoc, PDF signé/PAdES)
+    et la gestion du registre de factures.
+  version: 1.0.0
+  contact:
+    name: Adlane Agrimi
+    url: https://github.com/adlanegrm-oss/einvoice-saas
+
+servers:
+  - url: http://localhost:8080
+    description: Serveur de développement local
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /api/v1/health:
+    get:
+      summary: Vérification de l'état du service (Healthcheck)
+      description: Route publique indiquant la disponibilité du serveur HTTP et de la base de données.
+      security: []
+      responses:
+        '200':
+          description: Service opérationnel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  time:
+                    type: string
+                    format: date-time
+                    example: "2026-09-24T02:50:00Z"
+
+  /api/v1/validate:
+    post:
+      summary: Validation et détection unifiée de documents e-invoicing
+      description: >
+        Analyse le contenu binaire d'un fichier (Factur-X, UBL XML, EDIFACT, IDDoc ou PDF signé)
+        et retourne un diagnostic complet de conformité.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              type: string
+              format: binary
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+          text/plain:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Document valide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileValidationResult'
+        '422':
+          description: Document invalide ou format non conforme
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileValidationResult'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/invoices:
+    get:
+      summary: Liste l'ensemble des factures enregistrées
+      responses:
+        '200':
+          description: Liste des factures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Enregistrer et valider une nouvelle facture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Invoice'
+      responses:
+        '200':
+          description: Facture validée et enregistrée
+        '400':
+          description: Erreur de validation du modèle
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/reports:
+    get:
+      summary: Obtenir le rapport financier journalier
+      responses:
+        '200':
+          description: Rapport journalier calculé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_invoices:
+                    type: integer
+                    example: 42
+                  total_ht:
+                    type: number
+                    format: double
+                    example: 12500.50
+                  total_ttc:
+                    type: number
+                    format: double
+                    example: 15000.60
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Clé d'accès API (par défaut `secret-api-key-123`)
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    UnauthorizedError:
+      description: Clé API manquante ou invalide
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Accès non autorisé : Clé API manquante ou invalide"
+
+  schemas:
+    FileValidationResult:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [FACTUR-X, UBL, EDIFACT, IDDOC, SIGNED_PDF, UNKNOWN]
+          example: FACTUR-X
+        is_valid:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: string
+          example: []
+        warnings:
+          type: array
+          items:
+            type: string
+          example: ["Profil minimaliste détecté"]
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            root_element: "CrossIndustryInvoice"
+
+    Invoice:
+      type: object
+      required:
+        - invoice_number
+        - seller
+        - buyer
+        - currency
+      properties:
+        id:
+          type: string
+          example: "inv-001"
+        invoice_number:
+          type: string
+          example: "INV-2026-001"
+        seller:
+          $ref: '#/components/schemas/Party'
+        buyer:
+          $ref: '#/components/schemas/Party'
+        currency:
+          type: string
+          example: "EUR"
+        total_ht:
+          type: number
+          format: double
+          example: 100.00
+        total_ttc:
+          type: number
+          format: double
+          example: 120.00
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+
+    Party:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Entreprise ABC"
+        vat_number:
+          type: string
+          example: "FR12345678901"
+
+    InvoiceItem:
+      type: object
+      properties:
+        description:
+          type: string
+          example: "Service de conseil IT"
+        quantity:
+          type: integer
+          example: 1
+        unit_price:
+          type: number
+          format: double
+          example: 100.00
+        vat_rate:
+          type: number
+          format: double
+          example: 20.0
