@@ -30,12 +30,13 @@ func main() {
 	http.HandleFunc("/health", h.Health)
 	http.HandleFunc("/invoices/validate", h.Validate)
 	http.HandleFunc("/invoices", h.List)
+	http.HandleFunc("/invoices/export/xml", h.ExportXML)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS avec persistance SQLite !")
+		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS avec persistance SQLite et support Factur-X !")
 	})
 
-	log.Println("Serveur démarré sur le port 8080 avec base SQLite...")
+	log.Println("Serveur démarré sur le port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Erreur lors du démarrage : %v", err)
 	}
