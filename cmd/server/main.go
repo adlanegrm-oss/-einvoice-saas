@@ -8,6 +8,7 @@ import (
 
 	"github.com/adlanegrm-oss/einvoice-saas/internal/handler"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/repository"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
 func main() {
@@ -18,13 +19,16 @@ func main() {
 	}
 	defer db.Close()
 
-	// Utilisation du repository SQLite
 	repo, err := repository.NewSQLiteInvoiceRepository(db)
 	if err != nil {
 		log.Fatalf("Erreur d'initialisation du repository SQLite : %v", err)
 	}
 
-	h := handler.NewInvoiceHandler(repo)
+	// Initialisation du Worker Pool (3 workers en parallèle, file de 100 tâches)
+	pool := worker.NewPool(3, 100)
+	defer pool.Stop()
+
+	h := handler.NewInvoiceHandler(repo, pool)
 
 	// Routes HTTP
 	http.HandleFunc("/health", h.Health)
@@ -32,8 +36,12 @@ func main() {
 	http.HandleFunc("/invoices", h.List)
 	http.HandleFunc("/invoices/export/xml", h.ExportXML)
 
+	// Routes Rapports & Traitements Cron
+	http.HandleFunc("/reports/daily", h.GetDailyReport)
+	http.HandleFunc("/reports/daily/async", h.TriggerAsyncCronTask)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS avec persistance SQLite et support Factur-X !")
+		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS avec moteur de traitement asynchrone !")
 	})
 
 	log.Println("Serveur démarré sur le port 8080...")
