@@ -11,53 +11,44 @@ func TestValidateInvoice(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Facture valide",
+			name: "Facture valide avec calcul de totaux",
 			invoice: Invoice{
 				ID:       "1",
 				Number:   "INV-001",
 				Customer: "Client A",
-				Amount:   100.0,
-				Currency: "EUR",
+				Items: []InvoiceItem{
+					{Description: "Développement Go", Quantity: 2, UnitPrice: 100.0, VATRate: 20.0},
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Numéro de facture manquant",
 			invoice: Invoice{
-				ID:       "2",
-				Number:   "",
 				Customer: "Client B",
-				Amount:   100.0,
+				Items: []InvoiceItem{
+					{Description: "Service", Quantity: 1, UnitPrice: 50.0, VATRate: 20.0},
+				},
 			},
 			wantErr: true,
 		},
 		{
-			name: "Nom de client manquant",
+			name: "Aucun article dans la facture",
 			invoice: Invoice{
-				ID:       "3",
+				Number:   "INV-002",
+				Customer: "Client C",
+				Items:    []InvoiceItem{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Quantité invalide (<= 0)",
+			invoice: Invoice{
 				Number:   "INV-003",
-				Customer: "",
-				Amount:   100.0,
-			},
-			wantErr: true,
-		},
-		{
-			name: "Montant égal à zéro",
-			invoice: Invoice{
-				ID:       "4",
-				Number:   "INV-004",
 				Customer: "Client D",
-				Amount:   0.0,
-			},
-			wantErr: true,
-		},
-		{
-			name: "Montant négatif",
-			invoice: Invoice{
-				ID:       "5",
-				Number:   "INV-005",
-				Customer: "Client E",
-				Amount:   -50.0,
+				Items: []InvoiceItem{
+					{Description: "Service", Quantity: 0, UnitPrice: 50.0, VATRate: 20.0},
+				},
 			},
 			wantErr: true,
 		},
@@ -70,5 +61,31 @@ func TestValidateInvoice(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestCalculateTotals(t *testing.T) {
+	inv := Invoice{
+		Number:   "INV-TVA",
+		Customer: "Test TVA",
+		Items: []InvoiceItem{
+			{Description: "Produit A", Quantity: 2, UnitPrice: 100.0, VATRate: 20.0}, // HT: 200, TVA: 40
+			{Description: "Produit B", Quantity: 1, UnitPrice: 100.0, VATRate: 10.0}, // HT: 100, TVA: 10
+		},
+	}
+
+	err := inv.Validate()
+	if err != nil {
+		t.Fatalf("Validation échouée : %v", err)
+	}
+
+	if inv.TotalHT != 300.0 {
+		t.Errorf("TotalHT incorrect : reçu %v, attendu 300.0", inv.TotalHT)
+	}
+	if inv.TotalVAT != 50.0 {
+		t.Errorf("TotalVAT incorrect : reçu %v, attendu 50.0", inv.TotalVAT)
+	}
+	if inv.TotalTTC != 350.0 {
+		t.Errorf("TotalTTC incorrect : reçu %v, attendu 350.0", inv.TotalTTC)
 	}
 }
