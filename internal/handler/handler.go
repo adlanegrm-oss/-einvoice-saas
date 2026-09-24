@@ -4,30 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/adlanegrm-oss/einvoice-saas/internal/exporter"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/repository"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
-// InvoiceHandler gère les requêtes HTTP liées aux factures
 type InvoiceHandler struct {
-	repo repository.InvoiceRepository
+	repo       *repository.SQLiteInvoiceRepository
+	workerPool *worker.Pool
 }
 
-// NewInvoiceHandler initialise un nouvel InvoiceHandler
-func NewInvoiceHandler(repo repository.InvoiceRepository) *InvoiceHandler {
-	return &InvoiceHandler{repo: repo}
+func NewInvoiceHandler(repo *repository.SQLiteInvoiceRepository, pool *worker.Pool) *InvoiceHandler {
+	return &InvoiceHandler{
+		repo:       repo,
+		workerPool: pool,
+	}
 }
 
-// Health gère la vérification d'état de l'API
 func (h *InvoiceHandler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, `{"status": "ok"}`)
 }
 
-// Validate gère la validation et la sauvegarde d'une facture
 func (h *InvoiceHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
@@ -66,7 +68,6 @@ func (h *InvoiceHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// List retourne toutes les factures enregistrées
 func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
@@ -88,7 +89,6 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(invoices)
 }
 
-// ExportXML génère et renvoie le fichier XML Factur-X pour une facture donnée (?id=...)
 func (h *InvoiceHandler) ExportXML(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
@@ -130,4 +130,57 @@ func (h *InvoiceHandler) ExportXML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=factur-x-%s.xml", target.Number))
 	w.WriteHeader(http.StatusOK)
 	w.Write(xmlBytes)
+}
+
+// GetDailyReport retourne la synthèse financière d'une journée
+func (h *InvoiceHandler) GetDailyReport(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	dateStr := r.URL.Query().Get("date")
+	if dateStr == "" {
+		dateStr = time.Now().Format("2006-01-02")
+	}
+
+	report, err := h.repo.GetDailyReport(dateStr)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Erreur lors du calcul du rapport"})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(report)
+}
+
+// TriggerAsyncCronTask reçoit l'appel du Cron et libère l'exécution immédiatement
+func (h *InvoiceHandler) TriggerAsyncCronTask(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	dateStr := r.URL.Query().Get("date")
+	if dateStr == "" {
+		dateStr = time.Now().Format("2006-01-02")
+	}
+
+	// Soumission de la tâche au Worker Pool en arrière-plan (non-bloquant pour le Cron)
+	submitted := h.workerPool.Submit(func() {
+		report, err := h.repo.GetDailyReport(dateStr)
+		if err != nil {
+			fmt.Printf("[Async Job Error] Échec du rapport journalier: %v\n", err)
+			return
+		}
+		fmt.Printf("[Async Job Success] Rapport du %s généré: %d factures, Total TTC: %.2f EUR\n",
+			report.Date, report.TotalInvoices, report.TotalTTC)
+	})
+
+	if !submitted {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"status": "busy", "message": "File de traitement saturée"})
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "accepted",
+		"message": "Traitement de nuit planifié en arrière-plan",
+	})
 }
