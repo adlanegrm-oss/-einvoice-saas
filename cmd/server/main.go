@@ -6,14 +6,15 @@ import (
 	"net/http"
 )
 
-func main() {
-	// Route de vérification de santé (Healthcheck)
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, `{"status": "ok"}`)
-	})
+// HealthHandler gère la vérification d'état de l'API
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, `{"status": "ok"}`)
+}
 
-	// Route d'accueil
+func main() {
+	http.HandleFunc("/health", HealthHandler)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS !")
 	})
