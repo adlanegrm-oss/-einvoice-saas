@@ -1,0 +1,57 @@
+package repository
+
+import (
+	"database/sql"
+	"testing"
+	"time"
+
+	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
+	_ "modernc.org/sqlite"
+)
+
+func TestSQLiteInvoiceRepository(t *testing.T) {
+	// Connexion à une base de données SQLite en mémoire vive pour le test
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Impossible d'ouvrir la base en mémoire : %v", err)
+	}
+	defer db.Close()
+
+	repo, err := NewSQLiteInvoiceRepository(db)
+	if err != nil {
+		t.Fatalf("Impossible d'initialiser le repository : %v", err)
+	}
+
+	inv := invoice.Invoice{
+		ID:        "TEST-1",
+		Number:    "INV-2026-001",
+		Customer:  "Client Test",
+		IssueDate: time.Now(),
+		Items: []invoice.InvoiceItem{
+			{Description: "Service Cloud", Quantity: 2, UnitPrice: 150.0, VATRate: 20.0},
+		},
+	}
+
+	if err := inv.Validate(); err != nil {
+		t.Fatalf("Erreur de validation de la facture : %v", err)
+	}
+
+	// 1. Tester la sauvegarde
+	if err := repo.Save(inv); err != nil {
+		t.Fatalf("Erreur lors de la sauvegarde SQLite : %v", err)
+	}
+
+	// 2. Tester la récupération
+	invoices, err := repo.GetAll()
+	if err != nil {
+		t.Fatalf("Erreur lors de la récupération SQLite : %v", err)
+	}
+
+	if len(invoices) != 1 {
+		t.Fatalf("Nombre de factures incorrect : attendu 1, reçu %d", len(invoices))
+	}
+
+	if invoices[0].Number != "INV-2026-001" {
+		t.Errorf("Numéro de facture incorrect : %s", invoices[0].Number)
+	}
+}
