@@ -1,6 +1,6 @@
 go
 
-mpackage main
+package main
 
 import (
 	"net/http"
