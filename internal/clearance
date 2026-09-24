@@ -1,0 +1,37 @@
+package clearance
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+type ClearanceResponse struct {
+	ClearanceID string    `json:"clearance_id"`
+	Status      string    `json:"status"` // CLEARED ou REJECTED
+	QRCodeData  string    `json:"qr_code_data,omitempty"`
+	ClearedAt   time.Time `json:"cleared_at"`
+	Errors      []string  `json:"errors,omitempty"`
+}
+
+type Service struct {
+	// APIKey, Certificats mTLS ou client HTTP vers l'API fiscale/PDP
+}
+
+func NewService() *Service {
+	return &Service{}
+}
+
+func (s *Service) SubmitInvoice(ctx context.Context, invoiceID string, payload []byte) (*ClearanceResponse, error) {
+	// 1. Validation locale du format (Factur-X, UBL XML ou JSON)
+	// 2. Calcul du Hash (SHA-256) de la facture
+	// 3. Appel HTTP à l'API de clearance (ex: PPF, PDP, ZATCA, etc.)
+	
+	// Exemple de retour simulé :
+	return &ClearanceResponse{
+		ClearanceID: "CLR-2026-987654321",
+		Status:      "CLEARED",
+		QRCodeData:  "https://tax.gov/verify?id=CLR-2026-987654321",
+		ClearedAt:   time.Now(),
+	}, nil
+}
