@@ -12,7 +12,8 @@ import (
 )
 
 const defaultPort = "8080"
-const validAPIKey = "secret-api-key-123"
+const APIKey = "secret-api-key-123"
+const validAPIKey = APIKey
 
 // apiKeyAuthMiddleware protège les routes API en vérifiant la présence de la clé API
 func apiKeyAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
@@ -25,7 +26,7 @@ func apiKeyAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		if apiKey != validAPIKey {
+		if apiKey != APIKey {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{
