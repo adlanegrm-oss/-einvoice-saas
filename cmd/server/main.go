@@ -1,66 +1,90 @@
-go
-
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
+	"sync"
+
+	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 )
 
-func TestHealthHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/health", nil)
-	if err != nil {
-		t.Fatalf("Impossible de créer la requête : %v", err)
-	}
+var (
+	store   = []invoice.Invoice{}
+	storeMu sync.RWMutex
+)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(HealthHandler)
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Statut incorrect : reçu %v, attendu %v", status, http.StatusOK)
-	}
+// HealthHandler gère la vérification d'état de l'API
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, `{"status": "ok"}`)
 }
 
-func TestValidateAndListInvoices(t *testing.T) {
-	validateHandler := http.HandlerFunc(ValidateInvoiceHandler)
-	listHandler := http.HandlerFunc(ListInvoicesHandler)
-
-	// 1. Valider et enregistrer une facture valide
-	validJSON := `{
-		"id": "1",
-		"number": "INV-001",
-		"customer": "Client A",
-		"items": [
-			{"description": "Prestation", "quantity": 1, "unit_price": 200.0, "vat_rate": 20.0}
-		]
-	}`
-	req1, _ := http.NewRequest("POST", "/invoices/validate", strings.NewReader(validJSON))
-	rr1 := httptest.NewRecorder()
-	validateHandler.ServeHTTP(rr1, req1)
-
-	if rr1.Code != http.StatusOK {
-		t.Errorf("Facture valide : code attendu 200, reçu %v", rr1.Code)
+// ValidateInvoiceHandler gère la validation et l'enregistrement des factures
+func ValidateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
+		return
 	}
 
-	// 2. Tenter de valider une facture invalide
-	invalidJSON := `{"id":"2", "number":"INV-002", "customer":"Client B", "items": []}`
-	req2, _ := http.NewRequest("POST", "/invoices/validate", strings.NewReader(invalidJSON))
-	rr2 := httptest.NewRecorder()
-	validateHandler.ServeHTTP(rr2, req2)
-
-	if rr2.Code != http.StatusUnprocessableEntity {
-		t.Errorf("Facture invalide : code attendu 422, reçu %v", rr2.Code)
+	var inv invoice.Invoice
+	if err := json.NewDecoder(r.Body).Decode(&inv); err != nil {
+		http.Error(w, `{"error": "Format JSON invalide"}`, http.StatusBadRequest)
+		return
 	}
 
-	// 3. Récupérer la liste des factures
-	req3, _ := http.NewRequest("GET", "/invoices", nil)
-	rr3 := httptest.NewRecorder()
-	listHandler.ServeHTTP(rr3, req3)
+	w.Header().Set("Content-Type", "application/json")
 
-	if rr3.Code != http.StatusOK {
-		t.Errorf("GET /invoices : code attendu 200, reçu %v", rr3.Code)
+	if err := inv.Validate(); err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "invalid",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	// Sauvegarde de la facture valide en mémoire
+	storeMu.Lock()
+	store = append(store, inv)
+	storeMu.Unlock()
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "valid",
+		"invoice": inv,
+	})
+}
+
+// ListInvoicesHandler retourne la liste de toutes les factures enregistrées
+func ListInvoicesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	storeMu.RLock()
+	defer storeMu.RUnlock()
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(store)
+}
+
+func main() {
+	http.HandleFunc("/health", HealthHandler)
+	http.HandleFunc("/invoices/validate", ValidateInvoiceHandler)
+	http.HandleFunc("/invoices", ListInvoicesHandler)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Bienvenue sur l'API e-Invoice SaaS !")
+	})
+
+	log.Println("Serveur démarré sur le port 8080...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Erreur lors du démarrage : %v", err)
 	}
 }
