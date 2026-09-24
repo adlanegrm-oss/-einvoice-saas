@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/adlanegrm-oss/einvoice-saas/internal/exporter"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/repository"
 )
@@ -85,4 +86,48 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(invoices)
+}
+
+// ExportXML génère et renvoie le fichier XML Factur-X pour une facture donnée (?id=...)
+func (h *InvoiceHandler) ExportXML(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, `{"error": "Paramètre id manquant"}`, http.StatusBadRequest)
+		return
+	}
+
+	invoices, err := h.repo.GetAll()
+	if err != nil {
+		http.Error(w, `{"error": "Erreur serveur"}`, http.StatusInternalServerError)
+		return
+	}
+
+	var target *invoice.Invoice
+	for _, inv := range invoices {
+		if inv.ID == id {
+			target = &inv
+			break
+		}
+	}
+
+	if target == nil {
+		http.Error(w, `{"error": "Facture introuvable"}`, http.StatusNotFound)
+		return
+	}
+
+	xmlBytes, err := exporter.GenerateFacturXXML(*target)
+	if err != nil {
+		http.Error(w, `{"error": "Erreur lors de la génération XML"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=factur-x-%s.xml", target.Number))
+	w.WriteHeader(http.StatusOK)
+	w.Write(xmlBytes)
 }
