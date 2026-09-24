@@ -54,9 +54,14 @@ func main() {
 	// Initialisation des handlers
 	valHandler := handler.NewValidationHandler()
 
-	// 1. Service des fichiers statiques de l'interface Web (Front-Office & Back-Office)
+	// 1. Service des fichiers statiques de l'interface Web (Front/Back office & Swagger Docs)
 	fs := http.FileServer(http.Dir("web"))
 	mux.Handle("/", fs)
+
+	// Exposition du contrat d'API Swagger/OpenAPI
+	mux.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "swagger.yaml")
+	})
 
 	// 2. Health check (Publique)
 	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +74,7 @@ func main() {
 	})
 
 	// 3. Routes API Protégées par Clé API
-	// Route de validation multi-formats
+	// Route de validation multi-formats (Factur-X, UBL, EDIFACT, IDDoc, PDF Signé)
 	mux.HandleFunc("/api/v1/validate", apiKeyAuthMiddleware(valHandler.HandleValidateDocument))
 
 	// Endpoint Factures
