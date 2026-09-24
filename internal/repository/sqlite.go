@@ -9,6 +9,15 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// DailyReport représente le rapport agrégé d'une journée
+type DailyReport struct {
+	Date          string  `json:"date"`
+	TotalInvoices int     `json:"total_invoices"`
+	TotalHT       float64 `json:"total_ht"`
+	TotalVAT      float64 `json:"total_vat"`
+	TotalTTC      float64 `json:"total_ttc"`
+}
+
 type SQLiteInvoiceRepository struct {
 	db *sql.DB
 }
@@ -94,4 +103,29 @@ func (r *SQLiteInvoiceRepository) GetAll() ([]invoice.Invoice, error) {
 	}
 
 	return invoices, nil
+}
+
+// GetDailyReport génère une synthèse instantanée en une seule requête SQL
+func (r *SQLiteInvoiceRepository) GetDailyReport(dateStr string) (*DailyReport, error) {
+	query := `
+	SELECT 
+		COUNT(*), 
+		COALESCE(SUM(total_ht), 0.0), 
+		COALESCE(SUM(total_vat), 0.0), 
+		COALESCE(SUM(total_ttc), 0.0) 
+	FROM invoices 
+	WHERE DATE(issue_date) = DATE(?)`
+
+	report := &DailyReport{Date: dateStr}
+	err := r.db.QueryRow(query, dateStr).Scan(
+		&report.TotalInvoices,
+		&report.TotalHT,
+		&report.TotalVAT,
+		&report.TotalTTC,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return report, nil
 }
