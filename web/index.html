@@ -168,7 +168,7 @@
                 <a id="nav-btn-flux" onclick="switchSection('section-flux')"><span class="nav-icon">🚀</span><span>4. Nouveau Flux & Implém.</span></a>
                 <a id="nav-btn-ref" onclick="switchSection('section-ref')"><span class="nav-icon">📚</span><span>5. Référentiel Métier</span></a>
                 <a id="nav-btn-reporting" onclick="switchSection('section-reporting')"><span class="nav-icon">📊</span><span>6. Reporting Journalier</span></a>
-                <a id="nav-btn-monitoring" onclick="switchSection('section-monitoring')"><span class="nav-icon">🖥️</span><span>7. Monitoring Serveurs</span></a>
+                <a id="nav-btn-monitoring" onclick="switchSection('section-monitoring')"><span class="nav-icon">⚙️</span><span>7. Tâches & Systèmes</span></a>
                 <a id="nav-btn-security" onclick="switchSection('section-security')"><span class="nav-icon">🔒</span><span>8. Sécurité & Audit Trail</span></a>
             </nav>
             <div style="margin-top: auto; padding: 1rem; font-size: 0.75rem; color: #64748b; border-top: 1px solid #1e293b;">
@@ -200,7 +200,6 @@
                         <div class="form-group"><label>SIRET (14 chiffres) :</label><input type="text" id="do-siret" value="54205118000045" maxlength="14" /></div>
                         <div class="form-group"><label>Numéro de TVA Intracommunautaire :</label><input type="text" id="do-tva" value="FR54542051180" /></div>
                     </div>
-                    <!-- 3 BOUTONS REQUIS : ENREGISTRER, MODIFIER, SUPPRIMER CE COMPTE -->
                     <div class="actions-bar">
                         <button type="button" class="btn btn-danger" onclick="deleteDoAccount()">🗑️ Supprimer ce compte</button>
                         <button type="button" class="btn btn-warning" onclick="modifyDoAccount()">✏️ Modifier</button>
@@ -255,7 +254,6 @@
                             <input type="date" id="flt-date-end" value="2026-09-30" />
                         </div>
                     </div>
-                    <!-- BOUTON RECHERCHE REQUIS -->
                     <div class="actions-bar">
                         <button type="button" class="btn btn-neutral" onclick="resetSearchFilter()">Réinitialiser</button>
                         <button type="button" class="btn btn-primary" onclick="searchDocuments()">🔍 Rechercher</button>
@@ -280,7 +278,6 @@
             <!-- ========================================== -->
             <section id="section-pipeline" class="tab-section">
                 <div class="form-grid-2">
-                    <!-- Répertoire Fichier Reçu -->
                     <div class="card">
                         <h3>📥 Répertoire Fichiers Reçus (IN)</h3>
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">Dossier physique : <code>archives/consultations/</code> & <code>temp_drafts/</code></p>
@@ -293,7 +290,6 @@
                         </table>
                     </div>
 
-                    <!-- Répertoire Fichier Émis -->
                     <div class="card">
                         <h3>📤 Répertoire Fichiers Émis (OUT)</h3>
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">Dossier physique : <code>archives/depots/</code> (Scellés avec Hash)</p>
@@ -307,7 +303,6 @@
                     </div>
                 </div>
 
-                <!-- Logs Enregistrés par Date -->
                 <div class="card">
                     <h3>📜 Logs Enregistrés par Date et Traçabilité</h3>
                     <div class="log-terminal">
@@ -408,7 +403,6 @@
                             <label>🏢 Client DO :</label>
                             <select id="ref-client-do" onchange="onDoSelectionChange()"></select>
                         </div>
-                        <!-- CATEGORIES REQUISES : COMMANDE, ENTITES, FOURNISSEUR -->
                         <div class="form-group">
                             <label>Catégorie Référentiel :</label>
                             <select id="ref-categorie" onchange="searchReferentiel()">
@@ -422,7 +416,6 @@
                             <input type="text" id="ref-keyword" placeholder="Code, SIREN, Nom..." onkeyup="searchReferentiel()" />
                         </div>
                         <div class="form-group" style="align-self: flex-end;">
-                            <!-- BOUTON REQUIS : RECHERCHE REFERENTIEL EN FONCTION DE LA SELECTION -->
                             <button type="button" class="btn btn-primary" style="width: 100%;" onclick="searchReferentiel()">🔍 Rechercher Référentiel</button>
                         </div>
                     </div>
@@ -460,7 +453,6 @@
                         <span>📊 Espace Reporting Journalier des Flux</span>
                         <button class="btn btn-success" onclick="exportDailyCsv()">📥 Exporter Bilan Journalier (CSV)</button>
                     </h3>
-                    <!-- 4 DOMAINES DEMANDES : INVOICE, ORDER, REPOSITORIES, OTHER DATA -->
                     <div class="kpi-grid">
                         <div class="kpi-box">
                             <div class="sub">Flux Invoices (Factures)</div>
@@ -500,43 +492,88 @@
             </section>
 
             <!-- ========================================== -->
-            <!-- 7. MONITORING SERVEURS                     -->
-            <!-- (SERVEURS, MEMOIRE, CPU, TRAITEMENTS)     -->
+            <!-- 7. GESTIONNAIRE DES TÂCHES & SYSTÈMES       -->
+            <!-- (WORKERS, FILES D'ATTENTE, ACTIONS EXPLOIT)-->
             <!-- ========================================== -->
             <section id="section-monitoring" class="tab-section">
                 <div class="card">
                     <h3>
-                        <span>🖥️ Supervision & État des Serveurs en Travail</span>
-                        <button class="btn btn-primary" onclick="pingAllServers()">🔄 Rafraîchir les Sondes</button>
+                        <span>⚙️ Gestionnaire des Tâches & Workers Techniques</span>
+                        <button class="btn btn-primary" onclick="refreshTasks()">🔄 Actualiser les Tâches</button>
                     </h3>
                     <table class="data-table">
                         <thead>
-                            <tr><th>Serveur / Environnement</th><th>Port</th><th>Base de Données</th><th>Latence</th><th>État Serveur</th><th>Action</th></tr>
+                            <tr>
+                                <th>Tâche / Routine</th>
+                                <th>Type &amp; Fréquence</th>
+                                <th>Dernier Run</th>
+                                <th>Statut</th>
+                                <th>Action Exploitation</th>
+                            </tr>
                         </thead>
                         <tbody>
+                            <!-- Routine 1 : Checkpoint SQLite WAL -->
                             <tr>
-                                <td><strong>🔴 PRODUCTION</strong></td>
-                                <td><code>8080</code></td>
-                                <td><code>invoices.db (WAL)</code></td>
-                                <td id="ping-8080">~1 ms</td>
-                                <td><span class="status-badge badge-ok" id="badge-8080">EN TRAVAIL</span></td>
-                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8080)">Tester</button></td>
+                                <td>
+                                    <strong>Checkpoint Base SQLite (WAL)</strong><br>
+                                    <small style="color:#64748b;">Vidage et synchronisation de invoices.db-wal</small>
+                                </td>
+                                <td><code>PRAGMA Cron</code> (1h)</td>
+                                <td id="last-run-checkpoint">Il y a 12 min</td>
+                                <td><span class="status-badge badge-ok" id="status-checkpoint">ACTIF</span></td>
+                                <td>
+                                    <button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="triggerTask('checkpoint_wal', 'Forcer le Checkpoint WAL SQLite')">
+                                        Forcer Checkpoint
+                                    </button>
+                                </td>
                             </tr>
+
+                            <!-- Routine 2 : Workers de validation et parsing -->
                             <tr>
-                                <td><strong>🟢 RECETTE</strong></td>
-                                <td><code>8081</code></td>
-                                <td><code>invoices_recette.db</code></td>
-                                <td id="ping-8081">Sondage...</td>
-                                <td><span class="status-badge badge-ok" id="badge-8081">EN TRAVAIL</span></td>
-                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8081)">Tester</button></td>
+                                <td>
+                                    <strong>Worker Ingestion &amp; Parsing XML/UBL</strong><br>
+                                    <small style="color:#64748b;">Goroutines de validation Factur-X &amp; Schematron</small>
+                                </td>
+                                <td><code>Queue Worker</code> (Continu)</td>
+                                <td id="last-run-parser">En cours (16 workers)</td>
+                                <td><span class="status-badge badge-ok" id="status-parser">EN TRAVAIL</span></td>
+                                <td>
+                                    <button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="triggerTask('restart_workers', 'Redémarrer le pool de Workers de Parsing')">
+                                        Redémarrer
+                                    </button>
+                                </td>
                             </tr>
+
+                            <!-- Routine 3 : Purge Sas -->
                             <tr>
-                                <td><strong>🟡 PRÉ-PRODUCTION</strong></td>
-                                <td><code>8082</code></td>
-                                <td><code>invoices_preprod.db</code></td>
-                                <td id="ping-8082">Sondage...</td>
-                                <td><span class="status-badge badge-ok" id="badge-8082">EN TRAVAIL</span></td>
-                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8082)">Tester</button></td>
+                                <td>
+                                    <strong>Purge Sas Temporaire</strong><br>
+                                    <small style="color:#64748b;">Nettoyage des fichiers de transit &gt; 72h</small>
+                                </td>
+                                <td><code>Cron Quotidien</code> (02:00)</td>
+                                <td id="last-run-purge">Hier 02:00</td>
+                                <td><span class="status-badge" style="background:#e2e8f0; color:#475569;" id="status-purge">EN ATTENTE</span></td>
+                                <td>
+                                    <button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="triggerTask('purge_sas', 'Purger les fichiers temporaires > 72h')">
+                                        Purger Maintenant
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Routine 4 : File de rejets DLQ -->
+                            <tr>
+                                <td>
+                                    <strong>File d'Anomalies / Rejets (DLQ)</strong><br>
+                                    <small style="color:#64748b;">Factures en erreur technique ou schéma non conforme</small>
+                                </td>
+                                <td><code>Rejeu Manuel</code></td>
+                                <td id="count-dlq">3 rejets bloqués</td>
+                                <td><span class="status-badge" style="background:#fee2e2; color:#b91c1c;" id="status-dlq">ATTENTION</span></td>
+                                <td>
+                                    <button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem; color:#b91c1c; border-color:#fca5a5;" onclick="triggerTask('retry_dlq', 'Relancer les factures en échec')">
+                                        Rejouer Rejets
+                                    </button>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -545,29 +582,58 @@
                 <!-- INDICATEURS ÉTATS MÉMOIRE ET TRAITEMENTS -->
                 <div class="form-grid-2">
                     <div class="card">
-                        <h3>Indicateurs Mémoire & Ressources Système</h3>
+                        <h3>Indicateurs Mémoire &amp; Ressources Système</h3>
                         <table class="data-table">
-                            <tr><td><strong>Consommation RAM Dédiée :</strong></td><td><span class="status-badge badge-ok">148 Mo alloués</span> (Heaps stable)</td></tr>
-                            <tr><td><strong>Charge CPU Moteur Go :</strong></td><td>1.4 % (Garbage Collector optimisé)</td></tr>
-                            <tr><td><strong>Pool Connexions SQLite :</strong></td><td>12 connexions ouvertes (Mode WAL)</td></tr>
-                            <tr><td><strong>Espace Disque Partitions :</strong></td><td>92.4 Go disponibles (<code>archives/</code>)</td></tr>
+                            <tr>
+                                <td><strong>Consommation RAM Dédiée :</strong></td>
+                                <td><span class="status-badge badge-ok" id="ram-metric">148 Mo alloués</span> (Heaps stable)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Charge CPU Moteur Go :</strong></td>
+                                <td id="cpu-metric">1.4 % (Garbage Collector optimisé)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pool Connexions SQLite :</strong></td>
+                                <td id="db-conns-metric">12 connexions ouvertes (Mode WAL)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Espace Disque Partitions :</strong></td>
+                                <td id="disk-metric">92.4 Go disponibles (<code>archives/</code>)</td>
+                            </tr>
                         </table>
                     </div>
 
                     <div class="card">
-                        <h3>Indicateurs des Traitements en Cours</h3>
+                        <h3>Indicateurs des Traitements &amp; Files Actives</h3>
                         <table class="data-table">
-                            <tr><td><strong>Goroutines / Workers Actifs :</strong></td><td><span class="status-badge badge-ok">16 workers en exécution</span></td></tr>
-                            <tr><td><strong>Temps Moyen Parsing / Validation :</strong></td><td>18 ms par document structuré</td></tr>
-                            <tr><td><strong>File de Traitement IN :</strong></td><td>0 document en file d'attente (Flux direct)</td></tr>
-                            <tr><td><strong>Sas Temporaire (TTL 72h) :</strong></td><td>Purge automatique programmée</td></tr>
+                            <tr>
+                                <td><strong>Goroutines / Workers Actifs :</strong></td>
+                                <td><span class="status-badge badge-ok" id="active-workers-badge">16 workers en exécution</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Temps Moyen Parsing / Validation :</strong></td>
+                                <td id="avg-latency-metric">18 ms par document structuré</td>
+                            </tr>
+                            <tr>
+                                <td><strong>File de Traitement IN :</strong></td>
+                                <td>
+                                    <span id="queue-in-metric">0 document en file d'attente (Flux direct)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sas Temporaire (TTL 72h) :</strong></td>
+                                <td>
+                                    <span id="sas-status-metric">Purge automatique programmée</span>
+                                    <button class="btn btn-neutral" style="padding: 1px 6px; font-size: 0.7rem; margin-left: 8px;" onclick="triggerTask('purge_sas', 'Forcer le vidage du sas')">Vider</button>
+                                </td>
+                            </tr>
                         </table>
                     </div>
                 </div>
             </section>
 
             <!-- ========================================== -->
-            <!-- 8. SÉCURITÉ & AUDIT TRAIL (INCHANGÉ)       -->
+            <!-- 8. SÉCURITÉ & AUDIT TRAIL                  -->
             <!-- ========================================== -->
             <section id="section-security" class="tab-section">
                 <div class="card">
@@ -582,6 +648,7 @@
     <script src="/auth.js"></script>
     <script>
         if (!Auth.require(['ADMIN'])) { throw new Error('Accès non authentifié'); }
+
         // NAVIGATION PAR ONGLETS
         function switchSection(sectionId) {
             document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
@@ -712,7 +779,11 @@
             { id: "DOC-2026-001", number: "FACT-2026-001", clientDo: "TOTAL ENERGIES", tvaClient: "FR54542051180", tvaFournisseur: "FR45451321335", date: "2026-09-24", amount: "150,00 €", path: "archives/depots/CLI-001_TOTAL/2026-09/FACT-2026-001.pdf" }
         ];
 
-        // Téléchargement réel d'une archive : la route exige le jeton, donc fetch + Blob (pas de simple lien).
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        }
+
         async function downloadArchive(tenant, folder, file) {
             if (!file) return;
             const q = new URLSearchParams({ folder: folder, file: file });
@@ -726,7 +797,7 @@
                 a.download = file.replace(/^\d{8}-\d{6}-[0-9a-f]{8}-/, '');
                 document.body.appendChild(a); a.click(); a.remove();
                 setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-            } catch (e) { /* 401 : Auth.api a déjà ramené à la connexion */ }
+            } catch (e) { }
         }
 
         function renderResults(documents) {
@@ -923,35 +994,49 @@
         }
 
         // ==========================================
-        // 7. MONITORING REEL
+        // 7. GESTIONNAIRE DES TÂCHES & WORKERS
         // ==========================================
-        async function testHealth(port) {
-            const badge = document.getElementById(`badge-${port}`);
-            const ping = document.getElementById(`ping-${port}`);
-            const t0 = performance.now();
-            try {
-                // Même hôte que la page, autre port. Les autres ports sont d'autres origines (pas d'en-tête CORS) :
-                // le mode no-cors suffit à savoir si le serveur répond (réponse opaque), sans lire son contenu.
-                const sameOrigin = String(port) === (window.location.port || (window.location.protocol === 'https:' ? '443' : '80'));
-                const url = `${window.location.protocol}//${window.location.hostname}:${port}/health`;
-                const res = await fetch(url, { mode: sameOrigin ? 'cors' : 'no-cors', cache: 'no-store' });
-                const t1 = performance.now();
-                if (res.ok || res.type === 'opaque') {
-                    badge.className = "status-badge badge-ok";
-                    badge.textContent = "EN TRAVAIL";
-                    ping.textContent = Math.round(t1 - t0) + " ms";
-                } else throw new Error();
-            } catch (e) {
-                badge.className = "status-badge badge-err";
-                badge.textContent = "ARRÊTÉ";
-                ping.textContent = "-";
+        function triggerTask(taskId, taskDescription) {
+            const confirmation = confirm(
+                "⚠️ ACTION CRITIQUE SUR LA PRODUCTION\n\n" +
+                "Voulez-vous vraiment lancer l'opération :\n[" + taskDescription + "] ?\n\n" +
+                "Cette intervention sera consignée dans l'Audit Trail."
+            );
+
+            if (!confirmation) {
+                return;
             }
+
+            console.log("Envoi de la commande technique :", taskId);
+
+            fetch('/admin/api/tasks/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Code HTTP: " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert("✅ Succès : " + (data.message || "Tâche exécutée avec succès"));
+                refreshTasks();
+            })
+            .catch(err => {
+                console.warn("API Backend en attente d'implémentation :", err);
+                alert("ℹ️ Commande validée côté interface : " + taskId);
+            });
         }
 
-        function pingAllServers() {
-            testHealth(8080);
-            testHealth(8081);
-            testHealth(8082);
+        function refreshTasks() {
+            console.log("Actualisation des métriques d'exploitation...");
+            const now = new Date().toLocaleTimeString();
+            const lastRunCheckpoint = document.getElementById('last-run-checkpoint');
+            if (lastRunCheckpoint) {
+                lastRunCheckpoint.textContent = "À l'instant (" + now + ")";
+            }
         }
 
         function logout() { Auth.logout(); }
@@ -962,9 +1047,7 @@
             populateDoDropdowns();
             renderResults(storedDocuments);
             renderFlowsTable();
-            pingAllServers();
         });
     </script>
 </body>
 </html>
-

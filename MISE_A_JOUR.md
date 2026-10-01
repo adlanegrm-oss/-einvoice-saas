@@ -77,3 +77,23 @@ Limites connues (non traitées) :
 - XML encodé en ISO-8859-1 : refusé (le décodeur standard n'a pas de convertisseur de jeu de caractères).
 - Détection du Factur-X dans un PDF par recherche du nom de pièce jointe : ne voit pas un nom placé dans un flux compressé.
 - Les secrets `recette` / `preprod` / `prod` sont tous exigés par `docker compose` même pour lancer un seul service (interpolation globale du fichier).
+
+## Jalons validés - Cycle E2E complet (01/10/2026)
+
+- **Handlers & Compilation** : Résolution du doublon `writeJSON` et correction syntaxique dans `internal/handler/task_handler.go`.
+- **Authentification & Session** :
+  - `POST /api/v1/auth/login` : émission du token JWT avec claims RBAC (`role: ADMIN`, `tenant`).
+  - `GET /api/v1/auth/me` : validation du contexte connecté et du middleware Bearer.
+- **Gestion des factures (Core API)** :
+  - `POST /api/v1/invoices` : validation des règles métier (`number`, `customer`, `items`, TVA 0-100%).
+  - Calcul automatique et arrondi au centime (`CalculateTotals`) des montants HT, TVA et TTC.
+  - `GET /api/v1/invoices` : persistance vérifiée sous SQLite WAL.
+  - `GET /api/v1/reports/daily` : agrégation journalière synchrone opérationnelle.
+- **Conformité & Formats** :
+  - `GET /api/v1/invoices/export?id=...` : export XML conforme Factur-X / CII (`CrossIndustryInvoice`).
+- **Archivage & GED** :
+  - `POST /api/v1/invoices/deposit` : ingestion multipart via le champ `files`, rejet des schémas invalides (`422`), contrôle de conformité et calcul d'empreinte SHA-256 scellée.
+  - `GET /api/v1/invoices/list` : listing isolé par tenant (`VALIDE_PRET_A_ENVOYER`).
+  - `GET /api/v1/invoices/download?folder=factures&file=...` : restitution sécurisée des pièces archivées (`200 OK`, `1452 octets`).
+- **Traitement asynchrone** :
+  - `POST /api/v1/jobs/daily-report` : pool de workers en arrière-plan réceptif (`accepted`).

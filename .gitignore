@@ -6,3 +6,5 @@ data/
 bin/
 tmp/
 "@ | Out-File -Encoding utf8 .gitignore
+server.exe
+*.exe
