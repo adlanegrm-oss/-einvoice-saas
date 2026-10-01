@@ -136,8 +136,10 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 		return middleware.Protect(tokens, h, roles...)
 	}
 
-	mux := http.NewServeMux()
+	// Routeur principal
+	rootMux := http.NewServeMux()
 
+<<<<<<< HEAD
 	// Public
 	mux.HandleFunc("GET /health", invH.Health)
 	mux.HandleFunc("GET /api/v1/health", invH.Health)
@@ -221,5 +223,136 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("arrêt forcé", "error", err)
+=======
+	// --- ROUTES PUBLIQUES (sans clé API) ---
+	rootMux.HandleFunc("/health", h.Health)
+	rootMux.HandleFunc("/api/v1/health", h.Health)
+	rootMux.HandleFunc("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
+    if _, err := os.Stat("./web/swagger.yaml"); err == nil {
+        http.ServeFile(w, r, "./web/swagger.yaml")
+        return
+    }
+    http.ServeFile(w, r, "./swagger.yaml")
+})
+
+	// Distribution du dossier Web (statique public)
+	fileServer := http.FileServer(http.Dir("./web"))
+	rootMux.Handle("/", fileServer)
+
+	// --- SOUS-ROUTEUR PROTÉGÉ (API métier) ---
+	apiMux := http.NewServeMux()
+
+	// API Factures & Rapports
+	apiMux.HandleFunc("/api/v1/invoices", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			h.Validate(w, r)
+		case http.MethodGet:
+			h.List(w, r)
+		default:
+			http.Error(w, `{"error": "Methode non autorisee"}`, http.StatusMethodNotAllowed)
+		}
+	})
+	apiMux.HandleFunc("/api/v1/invoices/export", h.ExportXML)
+	apiMux.HandleFunc("/api/v1/reports", h.GetDailyReport)
+	apiMux.HandleFunc("/api/v1/reports/daily", h.GetDailyReport)
+	apiMux.HandleFunc("/api/v1/cron/nightly", h.TriggerAsyncCronTask)
+
+	// Consultation des tâches asynchrones actives
+	apiMux.HandleFunc("/api/v1/jobs/active", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		activeJobs := jobTracker.GetActiveJobs()
+		if activeJobs == nil {
+			activeJobs = []*jobs.Job{}
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"count": len(activeJobs),
+			"jobs":  activeJobs,
+		})
+	})
+
+	// Déclencheur manuel pour tester les traitements asynchrones
+	apiMux.HandleFunc("/api/v1/jobs/trigger-test", func(w http.ResponseWriter, r *http.Request) {
+		jobType := r.URL.Query().Get("type")
+		if jobType == "" {
+			jobType = "CLEARANCE_SUBMISSION"
+		}
+		invID := r.URL.Query().Get("invoice_id")
+		if invID == "" {
+			invID = fmt.Sprintf("INV-%d", time.Now().Unix())
+		}
+
+		jobID := fmt.Sprintf("job-%x", time.Now().UnixNano())
+		now := time.Now()
+
+		job := &jobs.Job{
+			ID:        jobID,
+			Type:      jobType,
+			InvoiceID: invID,
+			Status:    jobs.StatusQueued,
+			Progress:  0,
+			StartedAt: now,
+			UpdatedAt: now,
+		}
+		jobTracker.TrackJob(job)
+
+		logger.Info("Job enregistre dans la file",
+			"job_id", jobID,
+			"type", jobType,
+			"invoice_id", invID,
+			"status", string(jobs.StatusQueued),
+		)
+
+		submitted := pool.Submit(func() {
+			job.Status = jobs.StatusProcessing
+			job.Progress = 20
+			job.UpdatedAt = time.Now()
+			logger.Info("Traitement en cours", "job_id", jobID, "progress", 20)
+			time.Sleep(2 * time.Second)
+
+			job.Progress = 70
+			job.UpdatedAt = time.Now()
+			logger.Info("Traitement en cours", "job_id", jobID, "progress", 70)
+			time.Sleep(2 * time.Second)
+
+			job.Status = jobs.StatusCompleted
+			job.Progress = 100
+			job.UpdatedAt = time.Now()
+			logger.Info("Job termine avec succes", "job_id", jobID, "status", string(jobs.StatusCompleted))
+		})
+
+		if !submitted {
+			job.Status = jobs.StatusFailed
+			job.Error = "Worker pool plein"
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]string{"error": "File de traitement saturee"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "submitted",
+			"job_id":  jobID,
+			"message": "Traitement asynchrone lance",
+		})
+	})
+
+	// On applique le middleware de sécurité UNIQUEMENT au sous-multiplexeur /api/v1/
+	protectedHandler := middleware.SecurityMiddleware(apiMux)
+
+	rootMux.Handle("/api/v1/invoices", protectedHandler)
+	rootMux.Handle("/api/v1/invoices/", protectedHandler)
+	rootMux.Handle("/api/v1/reports", protectedHandler)
+	rootMux.Handle("/api/v1/reports/", protectedHandler)
+	rootMux.Handle("/api/v1/jobs/", protectedHandler)
+	rootMux.Handle("/api/v1/cron/", protectedHandler)
+
+	addr := fmt.Sprintf("0.0.0.0:%s", port)
+	logger.Info("Serveur eInvoice SaaS operationnel", "address", addr)
+
+	if err := http.ListenAndServe(addr, rootMux); err != nil {
+		logger.Error("Erreur serveur", "error", err)
+>>>>>>> 2dc57d3 (Refactor HandleAdminTaskExec: context support, validation, and task separation)
 	}
 }

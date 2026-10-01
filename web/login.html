@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -584,6 +585,9 @@
         }
 
         function handleLogin(e, mode) {
+=======
+﻿function handleLogin(e, mode) {
+>>>>>>> 2dc57d3 (Refactor HandleAdminTaskExec: context support, validation, and task separation)
             e.preventDefault();
             const email = mode === 'admin' 
                 ? document.getElementById('admin-email').value.trim() 
@@ -597,7 +601,10 @@
 
             fetch('/api/v1/auth/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-API-Key': 'dev-secret-key-2026'
+                },
                 body: JSON.stringify({ email: email, password: password })
             })
             .then(async res => {
@@ -611,14 +618,26 @@
                 sessionStorage.setItem('userRole', data.role);
                 sessionStorage.setItem('userEmail', data.email || email);
 
+<<<<<<< HEAD
                 // La destination dépend du rôle réel renvoyé par le serveur, pas du formulaire choisi.
                 window.location.href = (data.role === 'ADMIN') ? '/index.html' : '/dashboard-client.html';
+=======
+                if (mode === 'admin') {
+                    window.location.href = '/index.html';
+                } else {
+                    window.location.href = '/dashboard-client.html';
+                }
+>>>>>>> 2dc57d3 (Refactor HandleAdminTaskExec: context support, validation, and task separation)
             })
             .catch(err => {
                 errBox.innerText = err.message;
                 errBox.style.display = 'block';
             });
+<<<<<<< HEAD
         }
     </script>
 </body>
 </html>
+=======
+        }
+>>>>>>> 2dc57d3 (Refactor HandleAdminTaskExec: context support, validation, and task separation)
