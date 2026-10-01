@@ -1,0 +1,624 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Multi-Tenant | Portail Échange & Facturation B2B</title>
+    <style>
+        :root {
+            --bg-dark: #070d17;
+            --card-admin: #0d1b2a;
+            --card-client: #ffffff;
+            --border-admin: #1e293b;
+            --text-light: #f8fafc;
+            --text-dark: #0f172a;
+            --text-muted-dark: #64748b;
+            --text-muted-light: #94a3b8;
+            --primary-blue: #0284c7;
+            --primary-admin: #0ea5e9;
+            --accent-cyan: #38bdf8;
+            --input-dark-bg: #0b1322;
+            --input-light-bg: #f8fafc;
+            --input-border: #334155;
+            --input-border-light: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+            color: var(--text-light);
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .header-section {
+            text-align: center;
+            max-width: 900px;
+            margin-bottom: 2.5rem;
+        }
+
+        .badge-main {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 9999px;
+            color: var(--accent-cyan);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 1.25rem;
+        }
+
+        .brand-title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.75rem;
+            color: #ffffff;
+        }
+
+        .brand-subtitle {
+            font-size: 1rem;
+            color: var(--text-muted-light);
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+        }
+
+        .standards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .standard-tag {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .login-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 960px;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .login-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .login-card {
+            border-radius: 16px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .card-admin {
+            background: var(--card-admin);
+            border: 1px solid var(--border-admin);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-client {
+            background: var(--card-client);
+            color: var(--text-dark);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 1.25rem;
+            width: fit-content;
+        }
+
+        .role-badge-admin {
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .role-badge-client {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-desc {
+            font-size: 0.88rem;
+            margin-bottom: 1.75rem;
+            line-height: 1.45;
+        }
+
+        .card-admin .card-desc {
+            color: var(--text-muted-light);
+        }
+
+        .card-client .card-desc {
+            color: var(--text-muted-dark);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-admin label {
+            color: #e2e8f0;
+        }
+
+        .card-client label {
+            color: #334155;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .card-admin .form-control {
+            background: var(--input-dark-bg);
+            border: 1px solid var(--input-border);
+            color: #ffffff;
+        }
+
+        .card-admin .form-control:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+
+        .card-client .form-control {
+            background: var(--input-light-bg);
+            border: 1px solid var(--input-border-light);
+            color: #0f172a;
+        }
+
+        .card-client .form-control:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .btn-toggle-eye {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-admin .btn-toggle-eye svg {
+            fill: #64748b;
+        }
+
+        .card-client .btn-toggle-eye svg {
+            fill: #94a3b8;
+        }
+
+        .forgot-link-box {
+            text-align: right;
+            margin: -6px 0 16px 0;
+        }
+
+        .forgot-link {
+            font-size: 0.85rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .card-admin .forgot-link {
+            color: var(--accent-cyan);
+        }
+
+        .card-admin .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .card-client .forgot-link {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        .card-client .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-admin {
+            background: #0284c7;
+            color: #ffffff;
+        }
+
+        .btn-admin:hover {
+            background: #0369a1;
+        }
+
+        .btn-partner {
+            background: #0284c7;
+            color: #ffffff;
+        }
+
+        .btn-partner:hover {
+            background: #0369a1;
+        }
+
+        .auth-error-box {
+            margin-top: 1rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .card-admin .auth-error-box {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .card-client .auth-error-box {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+
+        /* MODALE MOT DE PASSE OUBLIÉ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 26px;
+            width: 90%;
+            max-width: 420px;
+            color: #ffffff;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-header {
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-bottom: 6px;
+        }
+
+        .modal-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            margin-top: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .modal-input:focus {
+            border-color: #38bdf8;
+        }
+
+        .modal-msg {
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            min-height: 18px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-modal-cancel {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-modal-submit {
+            padding: 8px 18px;
+            border-radius: 6px;
+            border: none;
+            background: #0284c7;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-section">
+        <div class="badge-main">⚡ Plateforme d'échange dématérialisée</div>
+        <h1 class="brand-title">Passerelle Nationale & Internationale e-Invoice</h1>
+        <p class="brand-subtitle">Supervision des flux de facturation électronique, mappings fiscaux et routage sécurisé</p>
+        <div class="standards-container">
+            <span class="standard-tag">PEPPOL BIS 3.0</span>
+            <span class="standard-tag">FACTUR-X (EN16931)</span>
+            <span class="standard-tag">EDIFACT D01B</span>
+            <span class="standard-tag">UBL 2.1</span>
+            <span class="standard-tag">CHORUS PRO / PASREL</span>
+        </div>
+    </header>
+
+    <main class="login-grid">
+        <!-- CONSOLE SUPER ADMINISTRATEUR -->
+        <div class="login-card card-admin">
+            <div class="role-badge role-badge-admin">⚙ Console Régie Technique</div>
+            <h2 class="card-title">Super Administrateur</h2>
+            <p class="card-desc">Supervision complète, paramétrage des partenaires, monitoring des serveurs et chaîne de traitement.</p>
+
+            <form id="form-admin" onsubmit="handleLogin(event, 'admin')">
+                <div class="form-group">
+                    <label for="admin-email">Identifiant Régie :</label>
+                    <input type="text" id="admin-email" class="form-control" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password">Mot de passe Régie :</label>
+                    <div class="password-wrap">
+                        <input type="password" id="admin-password" class="form-control" required autocomplete="current-password">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePass('admin-password')">
+                            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="forgot-link-box">
+                    <a href="javascript:void(0)" class="forgot-link" onclick="openForgot('admin-email')">Mot de passe oublié ?</a>
+                </div>
+
+                <button type="submit" class="btn-submit btn-admin">Connexion Administration</button>
+                <div id="error-admin" class="auth-error-box"></div>
+            </form>
+        </div>
+
+        <!-- ESPACE CLIENT DO & PARTENAIRE -->
+        <div class="login-card card-client">
+            <div class="role-badge role-badge-client">🏢 Espace Entreprise & Tiers</div>
+            <h2 class="card-title">Client DO & Partenaire</h2>
+            <p class="card-desc">Dépôt et consultation de factures, fiches connectiques IN/OUT et suivi des tiers.</p>
+
+            <form id="form-client" onsubmit="handleLogin(event, 'client')">
+                <div class="form-group">
+                    <label for="client-org">Organisation / Compte :</label>
+                    <select id="client-org" class="form-control">
+                        <option value="TOTAL">TOTAL ENERGIES MARKETING (Client DO)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="client-email">Adresse E-mail Tiers :</label>
+                    <input type="email" id="client-email" class="form-control" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="client-password">Mot de passe :</label>
+                    <div class="password-wrap">
+                        <input type="password" id="client-password" class="form-control" required autocomplete="current-password">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePass('client-password')">
+                            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="forgot-link-box">
+                    <a href="javascript:void(0)" class="forgot-link" onclick="openForgot('client-email')">Mot de passe oublié ?</a>
+                </div>
+
+                <button type="submit" class="btn-submit btn-partner">Accéder à l'Espace Facturation</button>
+                <div id="error-client" class="auth-error-box"></div>
+            </form>
+        </div>
+    </main>
+
+    <!-- FENETRE MODALE MOT DE PASSE OUBLIÉ -->
+    <div id="forgotModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">Réinitialisation du mot de passe</h3>
+                <p class="modal-desc">Indiquez l'adresse e-mail associée à votre compte pour recevoir le lien de renouvellement :</p>
+            </div>
+            <input type="email" id="forgotInputEmail" class="modal-input" placeholder="nom@entreprise.com" />
+            <div id="forgotMsg" class="modal-msg"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-cancel" onclick="closeForgot()">Fermer</button>
+                <button type="button" class="btn-modal-submit" onclick="submitForgotPassword()">Envoyer le lien</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeText(v) {
+            const d = document.createElement('div');
+            d.textContent = String(v == null ? '' : v);
+            return d.innerHTML;
+        }
+
+        function togglePass(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // sourceId : identifiant du champ e-mail du formulaire d'où l'on vient (pré-remplissage).
+        function openForgot(sourceId) {
+            const modal = document.getElementById('forgotModal');
+            const input = document.getElementById('forgotInputEmail');
+            const msg = document.getElementById('forgotMsg');
+            const source = sourceId ? document.getElementById(sourceId) : null;
+            input.value = source ? source.value.trim() : '';
+            msg.innerHTML = '';
+            modal.style.display = 'flex';
+        }
+
+        function closeForgot() {
+            document.getElementById('forgotModal').style.display = 'none';
+        }
+
+        function submitForgotPassword() {
+            const email = document.getElementById('forgotInputEmail').value.trim();
+            const msg = document.getElementById('forgotMsg');
+            if (!email) {
+                msg.innerHTML = '<span style="color:#f87171;">Veuillez saisir une adresse valide.</span>';
+                return;
+            }
+            msg.innerHTML = '<span style="color:#94a3b8;">Génération du jeton sécurisé...</span>';
+
+            fetch('/api/v1/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            })
+            .then(res => res.json())
+            .then(data => {
+                msg.innerHTML = '<span style="color:#4ade80;">' + escapeText(data.message || 'Lien expédié.') + '</span>';
+            })
+            .catch(() => {
+                msg.innerHTML = '<span style="color:#f87171;">Erreur de liaison avec le serveur SaaS.</span>';
+            });
+        }
+
+        function handleLogin(e, mode) {
+            e.preventDefault();
+            const email = mode === 'admin' 
+                ? document.getElementById('admin-email').value.trim() 
+                : document.getElementById('client-email').value.trim();
+            const password = mode === 'admin' 
+                ? document.getElementById('admin-password').value 
+                : document.getElementById('client-password').value;
+            const errBox = document.getElementById(mode === 'admin' ? 'error-admin' : 'error-client');
+
+            errBox.style.display = 'none';
+
+            fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password })
+            })
+            .then(async res => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Identifiant ou mot de passe incorrect.');
+                return data;
+            })
+            .then(data => {
+                if (!data.token || !data.role) throw new Error('Réponse de connexion invalide.');
+                sessionStorage.setItem('authToken', data.token);
+                sessionStorage.setItem('userRole', data.role);
+                sessionStorage.setItem('userEmail', data.email || email);
+
+                // La destination dépend du rôle réel renvoyé par le serveur, pas du formulaire choisi.
+                window.location.href = (data.role === 'ADMIN') ? '/index.html' : '/dashboard-client.html';
+            })
+            .catch(err => {
+                errBox.innerText = err.message;
+                errBox.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>

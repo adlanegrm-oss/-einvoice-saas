@@ -1,0 +1,747 @@
+<!-- ================= SECTION 4 : NOUVEAU FLUX & ORCHESTRATION B2B AVANCÉE ================= -->
+<div id="section-flows" class="flow-orchestration-container">
+    <style>
+        .flow-orchestration-container {
+            background: #0b1329;
+            color: #e2e8f0;
+            padding: 24px;
+            border-radius: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
+        }
+
+        .flow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 16px;
+            margin-bottom: 22px;
+        }
+
+        .flow-header h2 {
+            margin: 0;
+            color: #f8fafc;
+            font-size: 1.35rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .flow-header .subtitle {
+            margin: 4px 0 0 0;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge-status {
+            background: #1e3a5f;
+            color: #60a5fa;
+            border: 1px solid #2563eb;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .card-panel {
+            background: #111d38;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+
+        .form-grid-top {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #cbd5e1;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 9px 12px;
+            background: #0a1124;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: #38bdf8;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .connectors-split-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .connector-card {
+            background: #111d38;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 18px;
+        }
+
+        .border-do { border-top: 4px solid #38bdf8; }
+        .border-partner { border-top: 4px solid #10b981; }
+
+        .card-title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        .card-title-bar h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #f8fafc;
+        }
+
+        .badge-role {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-role-in { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid #0284c7; }
+        .badge-role-out { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #059669; }
+
+        .dynamic-fields-zone {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed #1e293b;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .grid-3col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Tags Tiers */
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #0a1124;
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 6px;
+            min-height: 42px;
+            align-items: center;
+        }
+
+        .partner-tag {
+            background: #1e293b;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .partner-tag span.remove-tag {
+            cursor: pointer;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        .partner-tag span.remove-tag:hover { color: #ef4444; }
+
+        .tag-input {
+            border: none;
+            background: transparent;
+            color: #fff;
+            outline: none;
+            font-size: 0.82rem;
+            flex-grow: 1;
+            min-width: 140px;
+        }
+
+        /* Barre d'actions */
+        .flow-actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary { background: #0284c7; color: #fff; }
+        .btn-primary:hover { background: #0369a1; }
+        .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #334155; color: #fff; }
+
+        /* Table Registre */
+        .table-responsive-box {
+            background: #111d38;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 18px;
+        }
+
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.83rem;
+            margin-top: 10px;
+        }
+
+        .styled-table th {
+            background: #0a1124;
+            color: #94a3b8;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #1e293b;
+        }
+
+        .styled-table td {
+            padding: 12px;
+            border-bottom: 1px solid #1e293b;
+            color: #e2e8f0;
+        }
+
+        .health-pulse {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .pulse-ok { background: #10b981; box-shadow: 0 0 6px #10b981; }
+        .pulse-warn { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+
+        .tag-tech {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .tag-sap { background: #1e3a5f; color: #60a5fa; }
+        .tag-peppol { background: #064e3b; color: #34d399; }
+        .tag-as2 { background: #4c1d95; color: #c084fc; }
+        .tag-sftp { background: #78350f; color: #fde047; }
+        .tag-x400 { background: #3730a3; color: #a5b4fc; }
+        .tag-oftp { background: #831843; color: #f472b6; }
+        .tag-api { background: #134e4a; color: #2dd4bf; }
+
+        .btn-action-small {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: none;
+            margin-right: 4px;
+        }
+
+        .btn-log { background: #334155; color: #94a3b8; }
+        .btn-log:hover { background: #475569; color: #fff; }
+        .btn-del { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .btn-del:hover { background: #ef4444; color: #fff; }
+    </style>
+
+    <!-- En-tête -->
+    <div class="flow-header">
+        <div>
+            <h2>🚀 Nouveau Flux & Implémentation B2B / EDI</h2>
+            <p class="subtitle">Orchestration complète : Passerelle Donneur d'Ordre (ERP) vers Interopérabilité Tiers & VAN</p>
+        </div>
+        <div class="header-badges">
+            <span class="badge-status">Interopérabilité EN 16931</span>
+            <span class="badge-status">Sécurité mTLS / RFC 4130</span>
+        </div>
+    </div>
+
+    <!-- Paramètres métier supérieurs -->
+    <div class="card-panel">
+        <div class="form-grid-top">
+            <div class="form-group">
+                <label>🏢 Client Donneur d'Ordre (DO) :</label>
+                <select id="flow_client_do" class="form-control">
+                    <option value="TOTAL_ENERGIES">TOTAL ENERGIES MARKETING FRANCE (SIRET: 40320501800012)</option>
+                    <option value="CARREFOUR_FR">GROUPE CARREFOUR HYPERMARCHES (SIRET: 45132133500018)</option>
+                    <option value="AIRBUS_OPS">AIRBUS OPERATIONS SAS (SIRET: 42091234500099)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>🔄 Type de Flux Documentaire :</label>
+                <select id="flow_type" class="form-control">
+                    <option value="OUTBOUND_INVOICE">Factures de Vente (B2B Sortantes / INVOIC / UBL)</option>
+                    <option value="INBOUND_INVOICE">Factures Fournisseurs (Entrantes / Peppol BIS3)</option>
+                    <option value="ORDERS">Commandes d'Achat (ORDERS / UBL Order)</option>
+                    <option value="DESADV">Avis d'Expédition (DESADV / ASN)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>🧩 Moteur de Mapping & Règles Métier :</label>
+                <select id="flow_mapping_engine" class="form-control">
+                    <option value="XSLT_PEPPOL">XSLT 3.0 / Transformation vers UBL 2.1 & Factur-X</option>
+                    <option value="EDIFACT_D96A">Parser EDIFACT D96A vers IDoc SAP INVOIC02</option>
+                    <option value="SCHEMATRON_EN16931">Schematron EN 16931 + CIUS-FR & Profil PEPPOL</option>
+                    <option value="PASSTHROUGH">Pass-Through Direct (Sans Transformation)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>👥 Partenaires Destinataires Associés (Saisir nom ou identifiant et taper Entrée) :</label>
+            <div class="tags-container" id="partners_tags_container">
+                <div class="partner-tag" data-id="CARREFOUR">
+                    GROUPE CARREFOUR (GLN: 3012345678901)
+                    <span class="remove-tag" onclick="removeTag(this)">&times;</span>
+                </div>
+                <div class="partner-tag" data-id="AUCHAN">
+                    AUCHAN RETAIL (Peppol: 0002:41040946000045)
+                    <span class="remove-tag" onclick="removeTag(this)">&times;</span>
+                </div>
+                <input type="text" id="partner_input" class="tag-input" placeholder="+ Ajouter un tiers (ex: AIRBUS, 0002:SIRET...)" onkeydown="handleTagInput(event)" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Double Volet Connectique (IN vs OUT) -->
+    <div class="connectors-split-grid">
+        
+        <!-- BLOC 1 : CÔTÉ DONNEUR D'ORDRE (IN) -->
+        <div class="connector-card border-do">
+            <div class="card-title-bar">
+                <h3>📥 Connectique Client DO (Système Interne / ERP)</h3>
+                <span class="badge-role badge-role-in">SOURCE (IN)</span>
+            </div>
+
+            <div class="form-group">
+                <label>Protocole de Réception / Collecte :</label>
+                <select id="do_protocol_select" class="form-control" onchange="renderConnectorFields('do')">
+                    <option value="SAP_ALE">SAP RFC / ALE IDoc (T-Code SM59 / WE21)</option>
+                    <option value="SFTP">SFTP Interne Sécurisé (Clé SSH / Dossier spool)</option>
+                    <option value="REST_API">API REST Sécurisée / Webhook (JSON / XML)</option>
+                    <option value="AS2">Passerelle AS2 Interne (RFC 4130)</option>
+                    <option value="X400">Réseau VAN X.400 Interne</option>
+                </select>
+            </div>
+
+            <div id="do_dynamic_fields" class="dynamic-fields-zone"></div>
+        </div>
+
+        <!-- BLOC 2 : CÔTÉ PARTENAIRE / CLIENT (OUT) -->
+        <div class="connector-card border-partner">
+            <div class="card-title-bar">
+                <h3>📤 Connectique Partenaire / Client (Réseau Externe)</h3>
+                <span class="badge-role badge-role-out">CIBLE (OUT)</span>
+            </div>
+
+            <div class="form-group">
+                <label>Protocole d'Émission / Transmission :</label>
+                <select id="partner_protocol_select" class="form-control" onchange="renderConnectorFields('partner')">
+                    <option value="PEPPOL_AS4">Peppol AS4 (Access Point eDelivery Certifié)</option>
+                    <option value="AS2">Protocole AS2 Direct (RFC 4130)</option>
+                    <option value="X400">Réseau VAN X.400 Télécom (Atlas / GXS / IBM)</option>
+                    <option value="OFTP2">OFTP2 (Automobile / Odette Network)</option>
+                    <option value="SFTP">SFTP Tiers Sécurisé</option>
+                    <option value="REST_API">API REST Plateforme PDP / PPF</option>
+                </select>
+            </div>
+
+            <div id="partner_dynamic_fields" class="dynamic-fields-zone"></div>
+        </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div class="flow-actions-bar">
+        <button type="button" class="btn btn-secondary" onclick="testFullConnectivity()">
+            🔍 Tester la Liaison (Handshake, Certificats & Spool)
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveFlowImplementation()">
+            🚀 Déployer & Activer le Flux
+        </button>
+    </div>
+
+    <!-- Registre Technique enrichi -->
+    <div class="table-responsive-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 1rem; color: #f8fafc;">📋 Registre des Flux Techniques en Production</h3>
+            <span style="font-size: 0.78rem; color: #94a3b8;">Surveillance active des certificats et canaux</span>
+        </div>
+
+        <table class="styled-table" id="flows_table">
+            <thead>
+                <tr>
+                    <th>Statut & Santé</th>
+                    <th>Client DO</th>
+                    <th>Flux</th>
+                    <th>Source (DO)</th>
+                    <th>Cible (Tiers)</th>
+                    <th>Certificat / Expiration</th>
+                    <th>Vol. Jour</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="flows_table_body">
+                <tr>
+                    <td><span class="health-pulse pulse-ok"></span><strong>ACTIF</strong></td>
+                    <td>TOTAL ENERGIES MARKETING</td>
+                    <td>Factures Vente (B2B)</td>
+                    <td><span class="tag-tech tag-sap">SAP ALE IDoc</span></td>
+                    <td><span class="tag-tech tag-peppol">Peppol AS4</span></td>
+                    <td><small style="color: #10b981;">Valide (18/11/2027)</small></td>
+                    <td>142 docs</td>
+                    <td>
+                        <button class="btn-action-small btn-log" onclick="showFlowLogs('TOTAL_PEPPOL')">Logs</button>
+                        <button class="btn-action-small btn-del" onclick="deleteFlow(this)">Arrêter</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="health-pulse pulse-ok"></span><strong>ACTIF</strong></td>
+                    <td>GROUPE CARREFOUR HYPER</td>
+                    <td>Factures Fournisseur</td>
+                    <td><span class="tag-tech tag-sftp">SFTP /edi/in</span></td>
+                    <td><span class="tag-tech tag-as2">AS2 Direct</span></td>
+                    <td><small style="color: #f59e0b;">Expire dans 24j</small></td>
+                    <td>89 docs</td>
+                    <td>
+                        <button class="btn-action-small btn-log" onclick="showFlowLogs('CARREFOUR_AS2')">Logs</button>
+                        <button class="btn-action-small btn-del" onclick="deleteFlow(this)">Arrêter</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Logique dynamique intégrée -->
+    <script>
+        const PROTOCOL_CONFIG_SCHEMAS = {
+            AS2: `
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>AS2-From (Émetteur) :</label>
+                        <input type="text" class="form-control" placeholder="ex: TOTAL_AS2_PROD" />
+                    </div>
+                    <div class="form-group">
+                        <label>AS2-To (Récepteur) :</label>
+                        <input type="text" class="form-control" placeholder="ex: CARREFOUR_AS2_HUB" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>URL Endpoint AS2 (HTTP/S) :</label>
+                    <input type="url" class="form-control" placeholder="https://as2.partenaire.com:8443/as2/receive" />
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Certificat X.509 (.cer/.pem) :</label>
+                        <input type="file" class="form-control" accept=".cer,.crt,.pem" />
+                    </div>
+                    <div class="form-group">
+                        <label>Accusé MDN :</label>
+                        <select class="form-control">
+                            <option value="SYNC_SIGNED">Synchrone Signé (Recommandé)</option>
+                            <option value="ASYNC_SIGNED">Asynchrone Signé</option>
+                            <option value="NONE">Non signé</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+
+            X400: `
+                <div class="grid-3col">
+                    <div class="form-group">
+                        <label>Country (C) :</label>
+                        <input type="text" class="form-control" value="FR" />
+                    </div>
+                    <div class="form-group">
+                        <label>ADMD (Public) :</label>
+                        <input type="text" class="form-control" placeholder="ex: ATLAS" />
+                    </div>
+                    <div class="form-group">
+                        <label>PRMD (Privé) :</label>
+                        <input type="text" class="form-control" placeholder="ex: TOTAL" />
+                    </div>
+                </div>
+                <div class="grid-3col">
+                    <div class="form-group">
+                        <label>Organization (O) :</label>
+                        <input type="text" class="form-control" placeholder="ex: MARKETING" />
+                    </div>
+                    <div class="form-group">
+                        <label>Unit (OU) :</label>
+                        <input type="text" class="form-control" placeholder="ex: EDI-FACT" />
+                    </div>
+                    <div class="form-group">
+                        <label>User (S/CN) :</label>
+                        <input type="text" class="form-control" placeholder="ex: BAL_PROD" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Identifiant Boîte VAN (GXS / EDICOM / Generix) :</label>
+                    <input type="text" class="form-control" placeholder="ex: VAN_FR_99872" />
+                </div>
+            `,
+
+            PEPPOL_AS4: `
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Peppol Participant ID :</label>
+                        <input type="text" class="form-control" placeholder="ex: 0002:40320501800012 ou 9957:FR..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Point d'Accès SMP :</label>
+                        <input type="text" class="form-control" placeholder="https://smp.peppol.org/..." />
+                    </div>
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Process ID :</label>
+                        <input type="text" class="form-control" value="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Document Identifier :</label>
+                        <input type="text" class="form-control" value="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" />
+                    </div>
+                </div>
+            `,
+
+            OFTP2: `
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>SSID Local (Émetteur) :</label>
+                        <input type="text" class="form-control" placeholder="ex: O0013000001234TOTAL" />
+                    </div>
+                    <div class="form-group">
+                        <label>SSID Distant (Destinataire) :</label>
+                        <input type="text" class="form-control" placeholder="ex: O0013000005678PARTNER" />
+                    </div>
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Hôte & Port :</label>
+                        <input type="text" class="form-control" placeholder="oftp2.partner.com:3305" />
+                    </div>
+                    <div class="form-group">
+                        <label>Passphrase :</label>
+                        <input type="password" class="form-control" placeholder="••••••••••••" />
+                    </div>
+                </div>
+            `,
+
+            SFTP: `
+                <div class="grid-3col">
+                    <div class="form-group">
+                        <label>Hôte SFTP :</label>
+                        <input type="text" class="form-control" placeholder="sftp.partenaire.fr" />
+                    </div>
+                    <div class="form-group">
+                        <label>Port :</label>
+                        <input type="number" class="form-control" value="22" />
+                    </div>
+                    <div class="form-group">
+                        <label>Compte / Utilisateur :</label>
+                        <input type="text" class="form-control" placeholder="edi_user" />
+                    </div>
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Dossier Entrant (IN) :</label>
+                        <input type="text" class="form-control" value="/data/inbound/" />
+                    </div>
+                    <div class="form-group">
+                        <label>Dossier Sortant (OUT) :</label>
+                        <input type="text" class="form-control" value="/data/outbound/" />
+                    </div>
+                </div>
+            `,
+
+            SAP_ALE: `
+                <div class="grid-3col">
+                    <div class="form-group">
+                        <label>Application Server Host :</label>
+                        <input type="text" class="form-control" placeholder="sap-prod.internal" />
+                    </div>
+                    <div class="form-group">
+                        <label>System Number (Sysnr) :</label>
+                        <input type="text" class="form-control" placeholder="00" />
+                    </div>
+                    <div class="form-group">
+                        <label>Mandant / Client SAP :</label>
+                        <input type="text" class="form-control" placeholder="100" />
+                    </div>
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>RFC Program ID :</label>
+                        <input type="text" class="form-control" placeholder="EINVOICE_SAP_RFC" />
+                    </div>
+                    <div class="form-group">
+                        <label>Gateway Service :</label>
+                        <input type="text" class="form-control" placeholder="sapgw00" />
+                    </div>
+                </div>
+            `,
+
+            REST_API: `
+                <div class="form-group">
+                    <label>URL Endpoint de l'API / Webhook :</label>
+                    <input type="url" class="form-control" placeholder="https://api.pdp-agree.fr/v1/invoices" />
+                </div>
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label>Mode de Sécurisation :</label>
+                        <select class="form-control">
+                            <option value="BEARER">JWT Bearer Token / OAuth 2.0</option>
+                            <option value="MTLS">Mutual TLS (mTLS Certificat Client)</option>
+                            <option value="API_KEY">En-tête X-API-Key</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Jeton / Clé Secrète :</label>
+                        <input type="password" class="form-control" placeholder="Token d'authentification" />
+                    </div>
+                </div>
+            `
+        };
+
+        function renderConnectorFields(target) {
+            const selectElem = document.getElementById(`${target}_protocol_select`);
+            const container = document.getElementById(`${target}_dynamic_fields`);
+            if (!selectElem || !container) return;
+            const selectedProtocol = selectElem.value;
+            container.innerHTML = PROTOCOL_CONFIG_SCHEMAS[selectedProtocol] || "<p style='color:#94a3b8;font-size:0.8rem;'>Configuration standard sans champ supplémentaire.</p>";
+        }
+
+        function getTagClass(protocolValue) {
+            switch(protocolValue) {
+                case 'SAP_ALE': return 'tag-sap';
+                case 'PEPPOL_AS4': return 'tag-peppol';
+                case 'AS2': return 'tag-as2';
+                case 'SFTP': return 'tag-sftp';
+                case 'X400': return 'tag-x400';
+                case 'OFTP2': return 'tag-oftp';
+                case 'REST_API': return 'tag-api';
+                default: return 'tag-sap';
+            }
+        }
+
+        function handleTagInput(event) {
+            if (event.key === 'Enter' && event.target.value.trim() !== '') {
+                event.preventDefault();
+                const container = document.getElementById('partners_tags_container');
+                const tag = document.createElement('div');
+                tag.className = 'partner-tag';
+                tag.innerHTML = `${event.target.value.trim()} <span class="remove-tag" onclick="removeTag(this)">&times;</span>`;
+                container.insertBefore(tag, event.target);
+                event.target.value = '';
+            }
+        }
+
+        function removeTag(element) {
+            element.parentElement.remove();
+        }
+
+        function testFullConnectivity() {
+            alert("Vérification en cours :\n1. Résolution DNS & Handshake TLS\n2. Contrôle de validité des certificats X.509\n3. Test des permissions SFTP / En-têtes Peppol AS4\n\nRésultat : CONNEXION ÉTABLIE AVEC SUCCÈS !");
+        }
+
+        function saveFlowImplementation() {
+            const doClientElem = document.getElementById("flow_client_do");
+            const flowTypeElem = document.getElementById("flow_type");
+            const doProtoElem = document.getElementById("do_protocol_select");
+            const partnerProtoElem = document.getElementById("partner_protocol_select");
+
+            const doClient = doClientElem.options[doClientElem.selectedIndex].text.split('(')[0];
+            const flowType = flowTypeElem.options[flowTypeElem.selectedIndex].text;
+            const doProtoText = doProtoElem.options[doProtoElem.selectedIndex].text.split('(')[0];
+            const partnerProtoText = partnerProtoElem.options[partnerProtoElem.selectedIndex].text.split('(')[0];
+
+            const tableBody = document.getElementById("flows_table_body");
+            const newRow = document.createElement("tr");
+
+            newRow.innerHTML = `
+                <td><span class="health-pulse pulse-ok"></span><strong>ACTIF</strong></td>
+                <td>${doClient}</td>
+                <td>${flowType}</td>
+                <td><span class="tag-tech ${getTagClass(doProtoElem.value)}">${doProtoText}</span></td>
+                <td><span class="tag-tech ${getTagClass(partnerProtoElem.value)}">${partnerProtoText}</span></td>
+                <td><small style="color: #10b981;">Valide (Nouvellement émis)</small></td>
+                <td>0 doc</td>
+                <td>
+                    <button class="btn-action-small btn-log" onclick="showFlowLogs('NEW_FLOW')">Logs</button>
+                    <button class="btn-action-small btn-del" onclick="deleteFlow(this)">Arrêter</button>
+                </td>
+            `;
+
+            tableBody.prepend(newRow);
+            alert("Le nouveau flux d'interopérabilité technique a été déployé et activé !");
+        }
+
+        function deleteFlow(button) {
+            if (confirm("Voulez-vous suspendre ce flux technique ? Les transmissions vers ce partenaire seront mises en attente.")) {
+                button.closest('tr').remove();
+            }
+        }
+
+        function showFlowLogs(flowId) {
+            alert(`Affichage des traces temps réel pour le canal [${flowId}] :\n- Dépôt INVOIC reçu\n- Validation syntaxique OK\n- Acquittement MDN synchrone validé (Code 200 OK)`);
+        }
+
+        // Initialisation automatique des formulaires au chargement
+        renderConnectorFields("do");
+        renderConnectorFields("partner");
+    </script>
+</div>

@@ -1,0 +1,374 @@
+openapi: 3.0.3
+info:
+  title: eInvoice SaaS API
+  description: >
+    API de validation et d'archivage de factures électroniques (Factur-X/CII, UBL, EDIFACT, PDF).
+    Authentification par jeton Bearer obtenu via /api/v1/auth/login.
+  version: 1.1.0
+
+servers:
+  - url: http://localhost:8080
+    description: Développement local
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Santé du service (alias de /api/v1/health)
+      security: []
+      responses:
+        '200':
+          description: Service et base de données opérationnels.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: Base de données injoignable.
+
+  /api/v1/health:
+    get:
+      summary: Santé du service
+      security: []
+      responses:
+        '200':
+          description: Service et base de données opérationnels.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: Base de données injoignable.
+
+  /api/v1/auth/login:
+    post:
+      summary: Connexion
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Connexion réussie.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  token: { type: string, description: "Jeton JWT à envoyer en Bearer." }
+                  email: { type: string }
+                  role: { type: string, enum: [ADMIN, CLIENT_DO] }
+                  expires_at: { type: string, format: date-time }
+        '401': { description: "Identifiants incorrects." }
+        '429': { description: "Trop de tentatives." }
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Demander un lien de réinitialisation
+      description: >
+        Répond toujours 200 avec le même message, que le compte existe ou non.
+        Le lien est envoyé par e-mail ; le jeton n'apparaît jamais dans la réponse.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: "Demande enregistrée." }
+        '429': { description: "Trop de demandes." }
+  /api/v1/auth/reset-password:
+    post:
+      summary: Définir un nouveau mot de passe
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, description: "Jeton reçu par e-mail (usage unique, 15 min)." }
+                password: { type: string, format: password, minLength: 10 }
+      responses:
+        '200': { description: "Mot de passe mis à jour." }
+        '400': { description: "Jeton invalide ou expiré, ou mot de passe trop faible." }
+  /api/v1/auth/me:
+    get:
+      summary: Identité du jeton courant
+      responses:
+        '200':
+          description: Identité.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email: { type: string }
+                  role: { type: string }
+        '401': { description: "Jeton absent ou invalide." }
+  /api/v1/validate:
+    post:
+      summary: Contrôler un fichier sans l'enregistrer
+      description: Corps brut (PDF, XML ou EDIFACT), 10 Mo maximum.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+          application/xml:
+            schema: { type: string, format: binary }
+          application/pdf:
+            schema: { type: string, format: binary }
+      responses:
+        '200':
+          description: Document valide.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationResult' }
+        '422':
+          description: Document invalide (détail dans `errors`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationResult' }
+        '401': { description: "Non authentifié." }
+        '413': { description: "Fichier supérieur à 10 Mo." }
+  /api/v1/invoices:
+    get:
+      summary: Lister mes factures structurées
+      description: Un client voit les siennes ; l'administrateur voit toutes les factures.
+      responses:
+        '200':
+          description: Liste des factures.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Invoice' }
+        '401': { description: "Non authentifié." }
+    post:
+      summary: Contrôler et enregistrer une facture
+      description: >
+        L'identifiant est attribué par le serveur. Les totaux sont recalculés
+        (arrondi au centime). Le numéro doit être unique par émetteur.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvoiceInput' }
+      responses:
+        '201':
+          description: Facture enregistrée.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: valid }
+                  invoice: { $ref: '#/components/schemas/Invoice' }
+        '409': { description: "Numéro de facture déjà utilisé." }
+        '422': { description: "Facture invalide." }
+        '401': { description: "Non authentifié." }
+  /api/v1/invoices/export:
+    get:
+      summary: Exporter une facture en XML Factur-X (profil MINIMUM)
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Document XML CrossIndustryInvoice.
+          content:
+            application/xml:
+              schema: { type: string }
+        '404': { description: "Facture introuvable (ou appartenant à un autre client)." }
+        '401': { description: "Non authentifié." }
+  /api/v1/invoices/list:
+    get:
+      summary: Registre des archives de fichiers
+      responses:
+        '200':
+          description: Documents archivés (factures validées et brouillons).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ArchiveEntry' }
+        '401': { description: "Non authentifié." }
+  /api/v1/invoices/deposit:
+    post:
+      summary: Déposer des fichiers (validation + archivage)
+      description: >
+        Extensions acceptées : .pdf, .xml, .edi. 50 fichiers et 10 Mo par fichier au maximum.
+        En mode `ready`, un fichier invalide est rejeté. En mode `draft`, il est conservé 72 h.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                target:
+                  type: string
+                  enum: [ready, draft]
+                  default: ready
+                files:
+                  type: array
+                  items: { type: string, format: binary }
+      responses:
+        '200': { description: "Tous les fichiers ont été archivés (ou certains, statut `partial`)." }
+        '422': { description: "Aucun fichier archivé (voir `results[].errors`)." }
+        '400': { description: "Requête invalide." }
+        '401': { description: "Non authentifié." }
+  /api/v1/invoices/download:
+    get:
+      summary: Télécharger un document archivé
+      parameters:
+        - name: file
+          in: query
+          required: true
+          description: Nom stocké (champ `filename` du registre).
+          schema: { type: string }
+        - name: folder
+          in: query
+          required: true
+          schema: { type: string, enum: [factures, temporaire] }
+        - name: tenant
+          in: query
+          required: false
+          description: Réservé à l'administrateur.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Contenu du document (en pièce jointe).
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400': { description: "Paramètre invalide." }
+        '404': { description: "Document introuvable." }
+        '401': { description: "Non authentifié." }
+  /api/v1/reports/daily:
+    get:
+      summary: Synthèse d'une journée
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Jour au format AAAA-MM-JJ (aujourd'hui par défaut).
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Totaux de la journée.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyReport' }
+        '400': { description: "Date invalide." }
+        '401': { description: "Non authentifié." }
+  /api/v1/jobs/daily-report:
+    post:
+      summary: Déclencher le rapport global en tâche de fond (ADMIN)
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        '202': { description: "Tâche planifiée." }
+        '503': { description: "File de traitement saturée." }
+        '403': { description: "Réservé à l'administrateur." }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Health:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        database: { type: string, example: connected }
+
+    ValidationResult:
+      type: object
+      properties:
+        format: { type: string, enum: [FACTUR-X, UBL, EDIFACT, IDDOC, SIGNED_PDF, PDF, UNKNOWN] }
+        is_valid: { type: boolean }
+        errors:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        meta:
+          type: object
+          additionalProperties: { type: string }
+
+    InvoiceItem:
+      type: object
+      required: [quantity, unit_price]
+      properties:
+        description: { type: string, maxLength: 500 }
+        quantity: { type: integer, minimum: 1 }
+        unit_price: { type: number, minimum: 0 }
+        vat_rate: { type: number, minimum: 0, maximum: 100, example: 20 }
+
+    InvoiceInput:
+      type: object
+      required: [number, customer, items]
+      properties:
+        number: { type: string, maxLength: 64, example: FAC-2026-001 }
+        customer: { type: string, maxLength: 200 }
+        issue_date: { type: string, format: date-time }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: '#/components/schemas/InvoiceItem' }
+
+    Invoice:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceInput'
+        - type: object
+          properties:
+            id: { type: string, example: inv-3f9a1c2b7d4e5f60 }
+            total_ht: { type: number }
+            total_vat: { type: number }
+            total_ttc: { type: number }
+            is_validated: { type: boolean }
+
+    ArchiveEntry:
+      type: object
+      properties:
+        filename: { type: string, description: "Nom stocké (utilisé pour le téléchargement)." }
+        display_name: { type: string }
+        folder: { type: string, enum: [factures, temporaire] }
+        date: { type: string }
+        status: { type: string, enum: [VALIDE_PRET_A_ENVOYER, BROUILLON_TEMPORAIRE_72H] }
+        tenant: { type: string }
+        size: { type: integer }
+
+    DailyReport:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        total_invoices: { type: integer }
+        total_ht: { type: number }
+        total_vat: { type: number }
+        total_ttc: { type: number }

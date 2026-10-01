@@ -1,0 +1,970 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console B2B - eInvoice SaaS</title>
+    <style>
+        :root {
+            --primary: #0b2545;
+            --secondary: #134074;
+            --accent: #0077b6;
+            --sidebar-bg: #0d1b2a;
+            --sidebar-hover: #1e3a5f;
+            --sidebar-active: #0077b6;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            --badge-green: #10b981;
+            --badge-orange: #f59e0b;
+            --badge-red: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        .env-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.35rem 1.5rem; background-color: #09121d; color: #e2e8f0; font-size: 0.78rem; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .env-pill { padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 0.72rem; text-transform: uppercase; }
+        .env-prod { background: #ef4444; color: white; }
+        .env-preprod { background: #f59e0b; color: #1e293b; }
+        .env-recette { background: #10b981; color: white; }
+        .env-select {
+            background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px;
+            padding: 2px 6px; font-size: 0.75rem; outline: none; cursor: pointer;
+        }
+
+        header {
+            background-color: var(--primary); color: white;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;
+        }
+        .logo-area { font-size: 1.15rem; font-weight: bold; letter-spacing: 0.8px; display: flex; align-items: center; gap: 8px; }
+        .user-profile { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; }
+        .role-badge { padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+        .btn-logout { background: #1e293b; color: white; border: 1px solid #334155; padding: 4px 10px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.75rem; }
+        .btn-logout:hover { background: #334155; }
+
+        .app-layout { display: flex; flex: 1; overflow: hidden; }
+
+        .sidebar-vertical {
+            width: 300px; background-color: var(--sidebar-bg); color: #e2e8f0;
+            display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #1e293b;
+        }
+        .sidebar-header {
+            padding: 1rem 1.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: bold; border-bottom: 1px solid #1e293b;
+        }
+        .sidebar-nav {
+            display: flex; flex-direction: column; gap: 3px; padding: 0.7rem 0.5rem; overflow-y: auto;
+        }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 12px; padding: 0.78rem 0.9rem; border-radius: 6px;
+            color: #cbd5e1; text-decoration: none; font-size: 0.86rem; font-weight: 500;
+            transition: all 0.2s ease; cursor: pointer; border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover { background-color: var(--sidebar-hover); color: white; }
+        .sidebar-nav a.active {
+            background-color: var(--sidebar-active); color: white; font-weight: 600; border-left: 3px solid #38bdf8;
+        }
+        .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 1.5rem 2rem; background-color: var(--bg); }
+
+        .card {
+            background-color: var(--card-bg); border-radius: 8px; padding: 1.3rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; border: 1px solid var(--border-color);
+        }
+        .card h3 {
+            font-size: 1.02rem; color: var(--primary); margin-bottom: 1rem;
+            border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
+        .kpi-box { background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; }
+        .kpi-box .val { font-size: 1.55rem; font-weight: bold; color: var(--primary); margin: 0.2rem 0; }
+        .kpi-box .sub { font-size: 0.78rem; color: var(--text-muted); }
+
+        .form-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .form-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+        .form-group input, .form-group select {
+            padding: 0.55rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.85rem; outline: none;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,119,182,0.15);
+        }
+
+        .actions-bar { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1rem; flex-wrap: wrap; }
+        .btn { padding: 0.55rem 1.2rem; border-radius: 5px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-neutral { background: #64748b; color: white; }
+
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
+        table.data-table th, table.data-table td { border: 1px solid var(--border-color); padding: 0.6rem 0.75rem; text-align: left; font-size: 0.85rem; }
+        table.data-table th { background-color: #f8fafc; color: var(--primary); font-weight: 600; }
+        table.data-table tr:hover { background-color: #f1f5f9; }
+
+        .status-badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+        .badge-ok { background: #dcfce7; color: #15803d; }
+        .badge-warn { background: #fef3c7; color: #b45309; }
+        .badge-err { background: #fee2e2; color: #991b1b; }
+
+        .log-terminal {
+            background-color: #0f172a; color: #38bdf8; font-family: 'Consolas', monospace;
+            padding: 1rem; border-radius: 6px; font-size: 0.8rem; max-height: 240px; overflow-y: auto; line-height: 1.4;
+        }
+
+        .tab-section { display: none; }
+        .tab-section.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- Bandeau Admin Environnements -->
+    <div class="env-bar" id="admin-env-bar">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>Environnement Actif : </span>
+            <span class="env-pill env-prod" id="active-env-pill">PRODUCTION</span>
+            <span style="color: #94a3b8;">Bascule de régie :</span>
+            <select class="env-select" id="env-switcher" onchange="switchEnvironment(this.value)">
+                <option value="PROD" selected>🔴 Production (Port 8080)</option>
+                <option value="PREPROD">🟡 Pré-Production (Port 8082)</option>
+                <option value="RECETTE">🟢 Recette (Port 8081)</option>
+            </select>
+        </div>
+        <div style="font-size: 0.75rem; color: #cbd5e1;">Base active : <code id="active-db-label">invoices.db</code></div>
+    </div>
+
+    <!-- En-tête Principal -->
+    <header>
+        <div class="logo-area">⚡ eInvoice SaaS - Console Administration</div>
+        <div class="user-profile">
+            <span class="role-badge">👑 Super Administrateur</span>
+            <span id="adminEmailLabel"></span>
+            <a href="/login.html" class="btn-logout" onclick="Auth.logout(); return false;">Déconnexion</a>
+        </div>
+    </header>
+
+    <div class="app-layout">
+
+        <!-- Barre Latérale Verticale -->
+        <aside class="sidebar-vertical">
+            <div class="sidebar-header">CONSOLE D'EXPLOITATION</div>
+            <nav class="sidebar-nav">
+                <a id="nav-btn-do" class="active" onclick="switchSection('section-do')"><span class="nav-icon">🏢</span><span>1. Gestion DO / Partenaires</span></a>
+                <a id="nav-btn-search" onclick="switchSection('section-search')"><span class="nav-icon">🔍</span><span>2. Recherche & Filtres</span></a>
+                <a id="nav-btn-pipeline" onclick="switchSection('section-pipeline')"><span class="nav-icon">⚙️</span><span>3. Chaîne de Traitement</span></a>
+                <a id="nav-btn-flux" onclick="switchSection('section-flux')"><span class="nav-icon">🚀</span><span>4. Nouveau Flux & Implém.</span></a>
+                <a id="nav-btn-ref" onclick="switchSection('section-ref')"><span class="nav-icon">📚</span><span>5. Référentiel Métier</span></a>
+                <a id="nav-btn-reporting" onclick="switchSection('section-reporting')"><span class="nav-icon">📊</span><span>6. Reporting Journalier</span></a>
+                <a id="nav-btn-monitoring" onclick="switchSection('section-monitoring')"><span class="nav-icon">🖥️</span><span>7. Monitoring Serveurs</span></a>
+                <a id="nav-btn-security" onclick="switchSection('section-security')"><span class="nav-icon">🔒</span><span>8. Sécurité & Audit Trail</span></a>
+            </nav>
+            <div style="margin-top: auto; padding: 1rem; font-size: 0.75rem; color: #64748b; border-top: 1px solid #1e293b;">
+                Partition Disque : <br/><code>archives/depots/</code>
+            </div>
+        </aside>
+
+        <!-- Contenu Central -->
+        <main class="content-area">
+
+            <!-- ========================================== -->
+            <!-- 1. GESTION DO / PARTENAIRES                -->
+            <!-- ========================================== -->
+            <section id="section-do" class="tab-section active">
+                <div class="card">
+                    <h3>
+                        <span>🏢 Fiche Partenaire / Donneur d'Ordre</span>
+                        <small style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Enrôlement et mise à jour du tiers</small>
+                    </h3>
+                    <div class="form-grid-3">
+                        <div class="form-group"><label>Nom :</label><input type="text" id="do-nom" value="De Margerie" /></div>
+                        <div class="form-group"><label>Prénom :</label><input type="text" id="do-prenom" value="Christophe" /></div>
+                        <div class="form-group"><label>Adresse E-mail :</label><input type="email" id="do-email" value="tresorerie@totalenergies.com" /></div>
+                        <div class="form-group"><label>Nom de la Société :</label><input type="text" id="do-societe" value="TOTAL ENERGIES MARKETING FRANCE" /></div>
+                        <div class="form-group"><label>Adresse de Facturation :</label><input type="text" id="do-adresse" value="24 Cours Michelet" /></div>
+                        <div class="form-group"><label>Ville :</label><input type="text" id="do-ville" value="Courbevoie" /></div>
+                        <div class="form-group"><label>Pays :</label><input type="text" id="do-pays" value="FRANCE" /></div>
+                        <div class="form-group"><label>SIREN (9 chiffres) :</label><input type="text" id="do-siren" value="542051180" maxlength="9" /></div>
+                        <div class="form-group"><label>SIRET (14 chiffres) :</label><input type="text" id="do-siret" value="54205118000045" maxlength="14" /></div>
+                        <div class="form-group"><label>Numéro de TVA Intracommunautaire :</label><input type="text" id="do-tva" value="FR54542051180" /></div>
+                    </div>
+                    <!-- 3 BOUTONS REQUIS : ENREGISTRER, MODIFIER, SUPPRIMER CE COMPTE -->
+                    <div class="actions-bar">
+                        <button type="button" class="btn btn-danger" onclick="deleteDoAccount()">🗑️ Supprimer ce compte</button>
+                        <button type="button" class="btn btn-warning" onclick="modifyDoAccount()">✏️ Modifier</button>
+                        <button type="button" class="btn btn-success" onclick="saveDoAccount()">💾 Enregistrer</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Annuaire Référencé des Organisations DO & Partenaires</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Société</th><th>Contact</th><th>Email</th><th>SIREN / SIRET</th><th>N° TVA</th><th>Ville / Pays</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="do-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 2. RECHERCHE & FILTRE DOCUMENTS SUR DO     -->
+            <!-- ========================================== -->
+            <section id="section-search" class="tab-section">
+                <div class="card">
+                    <h3>
+                        <span>🔍 Filtre de Recherche de Documents sur les Partitions Clients DO</span>
+                    </h3>
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label>🆔 ID Document :</label>
+                            <input type="text" id="flt-doc-id" placeholder="Ex: DOC-2026-002" />
+                        </div>
+                        <div class="form-group">
+                            <label>📄 Numéro de Document / Facture :</label>
+                            <input type="text" id="flt-doc-num" placeholder="Ex: FACT-2026-002" />
+                        </div>
+                        <div class="form-group">
+                            <label>🏛️ TVA Client :</label>
+                            <input type="text" id="flt-tva-client" placeholder="Ex: FR54542051180" />
+                        </div>
+                        <div class="form-group">
+                            <label>🚚 TVA Fournisseur :</label>
+                            <input type="text" id="flt-tva-fournisseur" placeholder="Ex: FR45451321335" />
+                        </div>
+                        <div class="form-group">
+                            <label>📅 Date Début :</label>
+                            <input type="date" id="flt-date-start" value="2026-09-01" />
+                        </div>
+                        <div class="form-group">
+                            <label>📅 Date Fin :</label>
+                            <input type="date" id="flt-date-end" value="2026-09-30" />
+                        </div>
+                    </div>
+                    <!-- BOUTON RECHERCHE REQUIS -->
+                    <div class="actions-bar">
+                        <button type="button" class="btn btn-neutral" onclick="resetSearchFilter()">Réinitialiser</button>
+                        <button type="button" class="btn btn-primary" onclick="searchDocuments()">🔍 Rechercher</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Résultats des Documents Trouvés sur les Partitions</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID Document</th><th>N° Facture</th><th>Client DO / Partition</th><th>TVA Client</th><th>TVA Fournisseur</th><th>Date</th><th>Montant</th><th>Partition Physique</th><th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="search-results-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 3. CHAÎNE DE TRAITEMENT                    -->
+            <!-- ========================================== -->
+            <section id="section-pipeline" class="tab-section">
+                <div class="form-grid-2">
+                    <!-- Répertoire Fichier Reçu -->
+                    <div class="card">
+                        <h3>📥 Répertoire Fichiers Reçus (IN)</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">Dossier physique : <code>archives/consultations/</code> & <code>temp_drafts/</code></p>
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Nom Fichier</th><th>Client DO</th><th>État Traitement</th></tr></thead>
+                            <tbody>
+                                <tr><td>2026-09-25 01:40</td><td>FACT-2026-002.pdf</td><td>CLI-001_TOTAL</td><td><span class="status-badge badge-warn">Brouillon Sas (TTL 72h)</span></td></tr>
+                                <tr><td>2026-09-25 01:15</td><td>FACT-2026-001_UBL.xml</td><td>CLI-001_TOTAL</td><td><span class="status-badge badge-ok">Schéma EN 16931 Validé</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Répertoire Fichier Émis -->
+                    <div class="card">
+                        <h3>📤 Répertoire Fichiers Émis (OUT)</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">Dossier physique : <code>archives/depots/</code> (Scellés avec Hash)</p>
+                        <table class="data-table">
+                            <thead><tr><th>Date Émission</th><th>Nom Fichier</th><th>Format</th><th>Empreinte SHA-256</th></tr></thead>
+                            <tbody>
+                                <tr><td>2026-09-25 01:48</td><td>Facture Test Hybride Factur-X.pdf</td><td>Factur-X Extended</td><td><code>e3b0c44298fc1c14...</code></td></tr>
+                                <tr><td>2026-09-24 22:48</td><td>FACT-2026-001.pdf</td><td>Chorus Pro Transmis</td><td><code>a71c890123ef456b...</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Logs Enregistrés par Date -->
+                <div class="card">
+                    <h3>📜 Logs Enregistrés par Date et Traçabilité</h3>
+                    <div class="log-terminal">
+[2026-09-25 01:47:41] [INFO] [SYSTEM] Base invoices.db initialisee avec succes. Mode SQLite WAL actif.
+[2026-09-25 01:48:26] [INSPECTION] Ingestion flux recu IN: Facture Test Hybride Factur-X.pdf (Client: CLI-001_TOTAL)
+[2026-09-25 01:48:26] [SUCCESS] [ARCHIVE_OUT] Fichier scelle: archives\depots\CLI-001_TOTAL\2026-09\Facture Test Hybride Factur-X.pdf
+[2026-09-25 01:48:26] [AUDIT] Hash enregistre dans LogInvoiceProcessing: statut ACCEPTED
+[2026-09-25 02:15:10] [AUTH] Session super-administrateur ouverte pour admin.super@einvoice.int
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 4. NOUVEAU FLUX ET IMPLÉMENTATION          -->
+            <!-- ========================================== -->
+            <section id="section-flux" class="tab-section">
+                <div class="card">
+                    <h3>
+                        <span>🚀 Nouveau Flux et Implémentation</span>
+                        <small style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Paramétrage d'orchestration technique</small>
+                    </h3>
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label>🏢 Fiche Client DO :</label>
+                            <select id="flx-client-do">
+                                <option value="CLI-001_TOTAL">TOTAL ENERGIES MARKETING FRANCE</option>
+                                <option value="CLI-002_CARREFOUR">GROUPE CARREFOUR HYPERMARCHES</option>
+                                <option value="CLI-003_AIRBUS">AIRBUS OPERATIONS SAS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>🔄 Type de Flux :</label>
+                            <select id="flx-type-flux">
+                                <option value="FACTURE_VENTE">Factures de Vente (B2B Sortantes)</option>
+                                <option value="FACTURE_ACHAT">Factures Fournisseur (B2B Entrantes)</option>
+                                <option value="AVOIR_RECTIF">Avoirs & Rectificatifs Fiscaux</option>
+                                <option value="COMMANDE_ORDERS">Commandes EDI (ORDERS D96A)</option>
+                                <option value="EXPEDITION_DESADV">Avis d'expédition (DESADV D96A)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>🔌 Type de Connectique :</label>
+                            <select id="flx-connectique">
+                                <option value="PEPPOL_AS4">Peppol AS4 (Access Point Certifié)</option>
+                                <option value="AS2_RFC4130">Protocole AS2 Direct (RFC 4130)</option>
+                                <option value="SFTP_SSH">SFTP Dédié avec Clé RSA 4096</option>
+                                <option value="API_REST">API REST HTTPS / Webhooks</option>
+                                <option value="CHORUS_PRO">Passerelle Pivot Chorus Pro / PDP</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>📥 API IN (Point d'Entrée) :</label>
+                            <input type="text" id="flx-api-in" value="https://api.einvoice.internal/v1/inbound/peppol" />
+                        </div>
+                        <div class="form-group">
+                            <label>📤 API OUT (Point de Sortie) :</label>
+                            <input type="text" id="flx-api-out" value="https://api.totalenergies.com/b2b/v1/invoices" />
+                        </div>
+                        <div class="form-group">
+                            <label>🧩 Module Externe :</label>
+                            <select id="flx-module-externe">
+                                <option value="XSLT_CONVERTER">Moteur de Mapping XSLT / EDIFACT</option>
+                                <option value="OCR_TESSERACT">OCR & Extraction IA de PDF Hybride</option>
+                                <option value="SIGNATURE_PKI">Module Scellement Cryptographique XAdES/PAdES</option>
+                                <option value="PASREL_CONNECTOR">Passerelle Dédiée PASREL / PDP</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: span 3;">
+                            <label>🤝 Partenaires Associés :</label>
+                            <input type="text" id="flx-partenaires" value="GROUPE CARREFOUR HYPERMARCHES, AIRBUS OPERATIONS, TOTAL MARKETING" />
+                        </div>
+                    </div>
+                    <div class="actions-bar">
+                        <button type="button" class="btn btn-neutral" onclick="alert('Connectique testée avec succès (Code 200 OK)')">🔍 Tester la Connectique</button>
+                        <button type="button" class="btn btn-success" onclick="deployNewFlow()">🚀 Déployer le Nouveau Flux</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Registre des Flux Techniques Opérationnels</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Client DO</th><th>Type de Flux</th><th>Connectique</th><th>API IN / OUT</th><th>Module Externe</th><th>Partenaires</th><th>Statut</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="flows-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 5. RÉFÉRENTIEL MÉTIER                      -->
+            <!-- ========================================== -->
+            <section id="section-ref" class="tab-section">
+                <div class="card">
+                    <h3><span>📚 Référentiel Métier Centralisé</span></h3>
+                    <div class="form-grid-4">
+                        <div class="form-group">
+                            <label>🏢 Client DO :</label>
+                            <select id="ref-client-do" onchange="onDoSelectionChange()"></select>
+                        </div>
+                        <!-- CATEGORIES REQUISES : COMMANDE, ENTITES, FOURNISSEUR -->
+                        <div class="form-group">
+                            <label>Catégorie Référentiel :</label>
+                            <select id="ref-categorie" onchange="searchReferentiel()">
+                                <option value="COMMANDE" selected>📦 Commandes</option>
+                                <option value="ENTITES">🏛️ Entités</option>
+                                <option value="FOURNISSEUR">🚚 Fournisseurs</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mot-clé :</label>
+                            <input type="text" id="ref-keyword" placeholder="Code, SIREN, Nom..." onkeyup="searchReferentiel()" />
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <!-- BOUTON REQUIS : RECHERCHE REFERENTIEL EN FONCTION DE LA SELECTION -->
+                            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="searchReferentiel()">🔍 Rechercher Référentiel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="border-left: 4px solid var(--accent);">
+                    <h3>➕ Implémenter dans le Référentiel pour : <strong id="lbl-target-do" style="color: var(--accent);">TOTAL ENERGIES</strong></h3>
+                    <div class="form-grid-4">
+                        <div class="form-group"><label>Code / Référence :</label><input type="text" id="impl-c1" placeholder="CMD-2026-9000" /></div>
+                        <div class="form-group"><label>Désignation :</label><input type="text" id="impl-c2" placeholder="Prestation SaaS" /></div>
+                        <div class="form-group"><label>Identifiant / SIRET :</label><input type="text" id="impl-c3" placeholder="54205118000045" /></div>
+                        <div class="form-group"><label>Montant HT / Réf :</label><input type="text" id="impl-c4" placeholder="18 500 €" /></div>
+                    </div>
+                    <div class="actions-bar">
+                        <button type="button" class="btn btn-success" onclick="addReferentielEntry()">💾 Implémenter</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 id="ref-results-title">Données du Référentiel</h3>
+                    <table class="data-table">
+                        <thead id="ref-table-head"></thead>
+                        <tbody id="ref-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 6. REPORTING JOURNALIER                    -->
+            <!-- (INVOICE, ORDER, REPOSITORIES, OTHER DATA) -->
+            <!-- ========================================== -->
+            <section id="section-reporting" class="tab-section">
+                <div class="card">
+                    <h3>
+                        <span>📊 Espace Reporting Journalier des Flux</span>
+                        <button class="btn btn-success" onclick="exportDailyCsv()">📥 Exporter Bilan Journalier (CSV)</button>
+                    </h3>
+                    <!-- 4 DOMAINES DEMANDES : INVOICE, ORDER, REPOSITORIES, OTHER DATA -->
+                    <div class="kpi-grid">
+                        <div class="kpi-box">
+                            <div class="sub">Flux Invoices (Factures)</div>
+                            <div class="val" style="color: #0284c7;">1 428</div>
+                            <div class="sub">100% scellées légalement</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="sub">Flux Orders (Commandes)</div>
+                            <div class="val" style="color: #10b981;">342</div>
+                            <div class="sub">Commandes EDI & UBL intégrées</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="sub">Repositories (Référentiels DO)</div>
+                            <div class="val" style="color: #f59e0b;">1 890</div>
+                            <div class="sub">Lignes référencées synchronisées</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="sub">Other Data (Acquittements / Logs)</div>
+                            <div class="val" style="color: #7c3aed;">99.4 %</div>
+                            <div class="sub">Taux succès PDP / Chorus</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1.2rem 0 0.5rem 0; font-size: 0.95rem; color: var(--primary);">Synthèse des Flux Traités du Jour</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Catégorie de Flux</th><th>Volume Journalier</th><th>Formats Dématérialisés</th><th>Conformité Fiscale</th><th>Statut Global</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Invoices (Factures B2B)</strong></td><td>1 428 flux</td><td>Factur-X, UBL 2.1, EDIFACT</td><td><span class="status-badge badge-ok">100% Conforme</span></td><td><span class="status-badge badge-ok">Opérationnel</span></td></tr>
+                            <tr><td><strong>Orders (Commandes / Avis)</strong></td><td>342 flux</td><td>EDIFACT ORDERS, DESADV</td><td><span class="status-badge badge-ok">Norme Validée</span></td><td><span class="status-badge badge-ok">Opérationnel</span></td></tr>
+                            <tr><td><strong>Repositories (Entités & Tiers)</strong></td><td>1 890 enregistrements</td><td>Synchronisations Référentiels DO</td><td><span class="status-badge badge-ok">Synchronisé</span></td><td><span class="status-badge badge-ok">Actif</span></td></tr>
+                            <tr><td><strong>Other Data (Rejets & Logs)</strong></td><td>8 rejets isolés (0.6%)</td><td>Rapports Schematron XML</td><td><span class="status-badge badge-warn">Traité en Sas</span></td><td><span class="status-badge badge-ok">Résolu</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 7. MONITORING SERVEURS                     -->
+            <!-- (SERVEURS, MEMOIRE, CPU, TRAITEMENTS)     -->
+            <!-- ========================================== -->
+            <section id="section-monitoring" class="tab-section">
+                <div class="card">
+                    <h3>
+                        <span>🖥️ Supervision & État des Serveurs en Travail</span>
+                        <button class="btn btn-primary" onclick="pingAllServers()">🔄 Rafraîchir les Sondes</button>
+                    </h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Serveur / Environnement</th><th>Port</th><th>Base de Données</th><th>Latence</th><th>État Serveur</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>🔴 PRODUCTION</strong></td>
+                                <td><code>8080</code></td>
+                                <td><code>invoices.db (WAL)</code></td>
+                                <td id="ping-8080">~1 ms</td>
+                                <td><span class="status-badge badge-ok" id="badge-8080">EN TRAVAIL</span></td>
+                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8080)">Tester</button></td>
+                            </tr>
+                            <tr>
+                                <td><strong>🟢 RECETTE</strong></td>
+                                <td><code>8081</code></td>
+                                <td><code>invoices_recette.db</code></td>
+                                <td id="ping-8081">Sondage...</td>
+                                <td><span class="status-badge badge-ok" id="badge-8081">EN TRAVAIL</span></td>
+                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8081)">Tester</button></td>
+                            </tr>
+                            <tr>
+                                <td><strong>🟡 PRÉ-PRODUCTION</strong></td>
+                                <td><code>8082</code></td>
+                                <td><code>invoices_preprod.db</code></td>
+                                <td id="ping-8082">Sondage...</td>
+                                <td><span class="status-badge badge-ok" id="badge-8082">EN TRAVAIL</span></td>
+                                <td><button class="btn btn-neutral" style="padding: 2px 8px; font-size: 0.75rem;" onclick="testHealth(8082)">Tester</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- INDICATEURS ÉTATS MÉMOIRE ET TRAITEMENTS -->
+                <div class="form-grid-2">
+                    <div class="card">
+                        <h3>Indicateurs Mémoire & Ressources Système</h3>
+                        <table class="data-table">
+                            <tr><td><strong>Consommation RAM Dédiée :</strong></td><td><span class="status-badge badge-ok">148 Mo alloués</span> (Heaps stable)</td></tr>
+                            <tr><td><strong>Charge CPU Moteur Go :</strong></td><td>1.4 % (Garbage Collector optimisé)</td></tr>
+                            <tr><td><strong>Pool Connexions SQLite :</strong></td><td>12 connexions ouvertes (Mode WAL)</td></tr>
+                            <tr><td><strong>Espace Disque Partitions :</strong></td><td>92.4 Go disponibles (<code>archives/</code>)</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <h3>Indicateurs des Traitements en Cours</h3>
+                        <table class="data-table">
+                            <tr><td><strong>Goroutines / Workers Actifs :</strong></td><td><span class="status-badge badge-ok">16 workers en exécution</span></td></tr>
+                            <tr><td><strong>Temps Moyen Parsing / Validation :</strong></td><td>18 ms par document structuré</td></tr>
+                            <tr><td><strong>File de Traitement IN :</strong></td><td>0 document en file d'attente (Flux direct)</td></tr>
+                            <tr><td><strong>Sas Temporaire (TTL 72h) :</strong></td><td>Purge automatique programmée</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 8. SÉCURITÉ & AUDIT TRAIL (INCHANGÉ)       -->
+            <!-- ========================================== -->
+            <section id="section-security" class="tab-section">
+                <div class="card">
+                    <h3>🔒 Sécurité & Audit Trail</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Paramètres de chiffrement et traçabilité légale eIDAS.</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="/auth.js"></script>
+    <script>
+        if (!Auth.require(['ADMIN'])) { throw new Error('Accès non authentifié'); }
+        // NAVIGATION PAR ONGLETS
+        function switchSection(sectionId) {
+            document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.sidebar-nav a').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            
+            if (sectionId === 'section-do') document.getElementById('nav-btn-do').classList.add('active');
+            if (sectionId === 'section-search') document.getElementById('nav-btn-search').classList.add('active');
+            if (sectionId === 'section-pipeline') document.getElementById('nav-btn-pipeline').classList.add('active');
+            if (sectionId === 'section-flux') document.getElementById('nav-btn-flux').classList.add('active');
+            if (sectionId === 'section-ref') document.getElementById('nav-btn-ref').classList.add('active');
+            if (sectionId === 'section-reporting') document.getElementById('nav-btn-reporting').classList.add('active');
+            if (sectionId === 'section-monitoring') document.getElementById('nav-btn-monitoring').classList.add('active');
+            if (sectionId === 'section-security') document.getElementById('nav-btn-security').classList.add('active');
+        }
+
+        // BASCULE DE L'ENVIRONNEMENT ADMIN
+        function switchEnvironment(env) {
+            const pill = document.getElementById('active-env-pill');
+            const dbLabel = document.getElementById('active-db-label');
+            if (env === 'PROD') {
+                pill.className = 'env-pill env-prod'; pill.textContent = 'PRODUCTION'; dbLabel.textContent = 'invoices.db (WAL)';
+                if (window.location.port !== "8080") window.location.port = "8080";
+            } else if (env === 'PREPROD') {
+                pill.className = 'env-pill env-preprod'; pill.textContent = 'PRÉ-PRODUCTION'; dbLabel.textContent = 'invoices_preprod.db';
+                if (window.location.port !== "8082") window.location.port = "8082";
+            } else if (env === 'RECETTE') {
+                pill.className = 'env-pill env-recette'; pill.textContent = 'RECETTE'; dbLabel.textContent = 'invoices_recette.db';
+                if (window.location.port !== "8081") window.location.port = "8081";
+            }
+        }
+
+        // ==========================================
+        // 1. GESTION DO / PARTENAIRES
+        // ==========================================
+        let doList = [
+            { nom: "De Margerie", prenom: "Christophe", email: "tresorerie@totalenergies.com", societe: "TOTAL ENERGIES MARKETING FRANCE", adresse: "24 Cours Michelet", ville: "Courbevoie", pays: "FRANCE", siren: "542051180", siret: "54205118000045", tva: "FR54542051180" },
+            { nom: "Bompard", prenom: "Alexandre", email: "edi-supervision@carrefour.fr", societe: "GROUPE CARREFOUR HYPERMARCHES", adresse: "93 Avenue de Paris", ville: "Massy", pays: "FRANCE", siren: "451321335", siret: "45132133500012", tva: "FR45451321335" }
+        ];
+
+        function renderDoTable() {
+            const tbody = document.getElementById('do-table-body');
+            tbody.innerHTML = doList.map((d, index) => `
+                <tr>
+                    <td><strong>${d.societe}</strong></td>
+                    <td>${d.nom} ${d.prenom}</td>
+                    <td>${d.email}</td>
+                    <td><code>${d.siren}</code> / <code>${d.siret}</code></td>
+                    <td><strong>${d.tva}</strong></td>
+                    <td>${d.ville}, ${d.pays}</td>
+                    <td><button class="btn btn-warning" style="padding: 2px 6px; font-size: 0.75rem;" onclick="loadDoIntoForm(${index})">Charger</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function loadDoIntoForm(index) {
+            const d = doList[index];
+            document.getElementById('do-nom').value = d.nom;
+            document.getElementById('do-prenom').value = d.prenom;
+            document.getElementById('do-email').value = d.email;
+            document.getElementById('do-societe').value = d.societe;
+            document.getElementById('do-adresse').value = d.adresse;
+            document.getElementById('do-ville').value = d.ville;
+            document.getElementById('do-pays').value = d.pays;
+            document.getElementById('do-siren').value = d.siren;
+            document.getElementById('do-siret').value = d.siret;
+            document.getElementById('do-tva').value = d.tva;
+        }
+
+        function saveDoAccount() {
+            const soc = document.getElementById('do-societe').value;
+            if (!soc) return alert("Le nom de la société est obligatoire.");
+            doList.push({
+                nom: document.getElementById('do-nom').value,
+                prenom: document.getElementById('do-prenom').value,
+                email: document.getElementById('do-email').value,
+                societe: soc,
+                adresse: document.getElementById('do-adresse').value,
+                ville: document.getElementById('do-ville').value,
+                pays: document.getElementById('do-pays').value,
+                siren: document.getElementById('do-siren').value,
+                siret: document.getElementById('do-siret').value,
+                tva: document.getElementById('do-tva').value
+            });
+            renderDoTable();
+            populateDoDropdowns();
+            alert(`✅ Compte Partenaire / DO [${soc}] enregistré avec succès !`);
+        }
+
+        function modifyDoAccount() {
+            const siren = document.getElementById('do-siren').value;
+            const idx = doList.findIndex(d => d.siren === siren);
+            if (idx === -1) return alert("Compte non trouvé pour modification.");
+            doList[idx] = {
+                nom: document.getElementById('do-nom').value,
+                prenom: document.getElementById('do-prenom').value,
+                email: document.getElementById('do-email').value,
+                societe: document.getElementById('do-societe').value,
+                adresse: document.getElementById('do-adresse').value,
+                ville: document.getElementById('do-ville').value,
+                pays: document.getElementById('do-pays').value,
+                siren: siren,
+                siret: document.getElementById('do-siret').value,
+                tva: document.getElementById('do-tva').value
+            };
+            renderDoTable();
+            alert(`✏️ Compte [${doList[idx].societe}] modifié avec succès !`);
+        }
+
+        function deleteDoAccount() {
+            const siren = document.getElementById('do-siren').value;
+            const idx = doList.findIndex(d => d.siren === siren);
+            if (idx === -1) return alert("Compte introuvable.");
+            if (confirm(`Confirmez-vous la suppression du compte [${doList[idx].societe}] ?`)) {
+                doList.splice(idx, 1);
+                renderDoTable();
+                populateDoDropdowns();
+                alert("🗑️ Compte supprimé avec succès.");
+            }
+        }
+
+        // ==========================================
+        // 2. RECHERCHE ET FILTRES DOCUMENTS
+        // ==========================================
+        const storedDocuments = [
+            { id: "DOC-2026-002", number: "FACT-2026-002", clientDo: "TOTAL ENERGIES", tvaClient: "FR54542051180", tvaFournisseur: "FR45451321335", date: "2026-09-25", amount: "180,00 €", path: "archives/depots/CLI-001_TOTAL/2026-09/Facture Test Hybride Factur-X.pdf" },
+            { id: "DOC-2026-001", number: "FACT-2026-001", clientDo: "TOTAL ENERGIES", tvaClient: "FR54542051180", tvaFournisseur: "FR45451321335", date: "2026-09-24", amount: "150,00 €", path: "archives/depots/CLI-001_TOTAL/2026-09/FACT-2026-001.pdf" }
+        ];
+
+        // Téléchargement réel d'une archive : la route exige le jeton, donc fetch + Blob (pas de simple lien).
+        async function downloadArchive(tenant, folder, file) {
+            if (!file) return;
+            const q = new URLSearchParams({ folder: folder, file: file });
+            if (tenant) q.set('tenant', tenant);
+            try {
+                const res = await Auth.api('/api/v1/invoices/download?' + q.toString());
+                if (!res.ok) { alert('Téléchargement impossible (' + res.status + ').'); return; }
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = file.replace(/^\d{8}-\d{6}-[0-9a-f]{8}-/, '');
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+            } catch (e) { /* 401 : Auth.api a déjà ramené à la connexion */ }
+        }
+
+        function renderResults(documents) {
+            const tbody = document.getElementById('search-results-tbody');
+            if (documents.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 1.5rem;">Aucun document ne correspond aux filtres.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = documents.map(doc => `
+                <tr>
+                    <td><code>${escapeHtml(doc.id)}</code></td>
+                    <td><strong>${escapeHtml(doc.number)}</strong></td>
+                    <td>${escapeHtml(doc.clientDo)}</td>
+                    <td><code>${escapeHtml(doc.tvaClient)}</code></td>
+                    <td><code>${escapeHtml(doc.tvaFournisseur)}</code></td>
+                    <td>${escapeHtml(doc.date)}</td>
+                    <td><strong>${escapeHtml(doc.amount)}</strong></td>
+                    <td style="font-size: 0.78rem;"><code>${escapeHtml(doc.path)}</code></td>
+                    <td><button type="button" class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" ${doc.file ? '' : 'disabled title="Document de démonstration : non archivé sur le serveur"'} onclick="downloadArchive('${escapeHtml(doc.tenant || '')}', '${escapeHtml(doc.folder || 'factures')}', '${escapeHtml(doc.file || '')}')">⬇ Télécharger</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function searchDocuments() {
+            const docId = document.getElementById('flt-doc-id').value.trim().toLowerCase();
+            const docNum = document.getElementById('flt-doc-num').value.trim().toLowerCase();
+            const tvaClient = document.getElementById('flt-tva-client').value.trim().toLowerCase();
+            const tvaFourn = document.getElementById('flt-tva-fournisseur').value.trim().toLowerCase();
+            const dateStart = document.getElementById('flt-date-start').value;
+            const dateEnd = document.getElementById('flt-date-end').value;
+
+            const filtered = storedDocuments.filter(doc => {
+                if (docId && !doc.id.toLowerCase().includes(docId)) return false;
+                if (docNum && !doc.number.toLowerCase().includes(docNum)) return false;
+                if (tvaClient && !doc.tvaClient.toLowerCase().includes(tvaClient)) return false;
+                if (tvaFourn && !doc.tvaFournisseur.toLowerCase().includes(tvaFourn)) return false;
+                if (dateStart && doc.date < dateStart) return false;
+                if (dateEnd && doc.date > dateEnd) return false;
+                return true;
+            });
+            renderResults(filtered);
+        }
+
+        function resetSearchFilter() {
+            document.getElementById('flt-doc-id').value = '';
+            document.getElementById('flt-doc-num').value = '';
+            document.getElementById('flt-tva-client').value = '';
+            document.getElementById('flt-tva-fournisseur').value = '';
+            renderResults(storedDocuments);
+        }
+
+        // ==========================================
+        // 4. NOUVEAU FLUX & IMPLEMENTATION
+        // ==========================================
+        let implementedFlows = [
+            { clientDo: "TOTAL ENERGIES MARKETING FRANCE", type: "Factures de Vente (B2B)", connectique: "Peppol AS4", endpoints: "IN: /inbound/peppol<br/>OUT: api.totalenergies.com", module: "Factur-X & Schematron", partenaires: "CARREFOUR, AUCHAN", statut: "ACTIF" },
+            { clientDo: "GROUPE CARREFOUR HYPERMARCHES", type: "Factures Fournisseur (IN)", connectique: "Protocole AS2 Direct", endpoints: "CARREFOUR_AS2_BOX<br/>→ sftp://edi.carrefour.fr/", module: "XSLT / EDIFACT D96A", partenaires: "DANONE, NESTLE", statut: "ACTIF" }
+        ];
+
+        function renderFlowsTable() {
+            const tbody = document.getElementById('flows-table-body');
+            tbody.innerHTML = implementedFlows.map((f, idx) => `
+                <tr>
+                    <td><strong>${f.clientDo}</strong></td>
+                    <td>${f.type}</td>
+                    <td><span style="background: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${f.connectique}</span></td>
+                    <td style="font-size: 0.78rem;"><code>${f.endpoints}</code></td>
+                    <td>${f.module}</td>
+                    <td>${f.partenaires}</td>
+                    <td><span class="status-badge badge-ok">${f.statut}</span></td>
+                    <td><button class="btn btn-danger" style="padding: 2px 6px; font-size: 0.72rem;" onclick="implementedFlows.splice(${idx}, 1); renderFlowsTable();">Supprimer</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function deployNewFlow() {
+            const doClient = document.getElementById('flx-client-do').options[document.getElementById('flx-client-do').selectedIndex].text;
+            const typeFlux = document.getElementById('flx-type-flux').options[document.getElementById('flx-type-flux').selectedIndex].text;
+            const connectique = document.getElementById('flx-connectique').options[document.getElementById('flx-connectique').selectedIndex].text;
+            const moduleExterne = document.getElementById('flx-module-externe').options[document.getElementById('flx-module-externe').selectedIndex].text;
+            const apiIn = document.getElementById('flx-api-in').value;
+            const apiOut = document.getElementById('flx-api-out').value;
+            const partenaires = document.getElementById('flx-partenaires').value;
+
+            implementedFlows.unshift({
+                clientDo: doClient,
+                type: typeFlux,
+                connectique: connectique,
+                endpoints: `IN: ${apiIn}<br/>OUT: ${apiOut}`,
+                module: moduleExterne,
+                partenaires: partenaires,
+                statut: "ACTIF"
+            });
+            renderFlowsTable();
+            alert(`🚀 Nouveau flux déployé avec succès pour ${doClient} !`);
+        }
+
+        // ==========================================
+        // 5. REFERENTIEL METIER
+        // ==========================================
+        let referentielDB = {
+            "TOTAL ENERGIES MARKETING FRANCE": {
+                COMMANDE: [{ c1: "CMD-2026-8801", c2: "Fourniture Logicielle SaaS", c3: "Prestation SaaS B2B", c4: "15 000 €", c5: "Validée" }],
+                ENTITES: [{ c1: "ENT-TOTAL-HQ", c2: "TOUR MICHELET DEFENSE", c3: "54205118000045", c4: "Courbevoie (92)", c5: "Siège Social" }],
+                FOURNISSEUR: [{ c1: "FOURN-01", c2: "CEGEDIM BUSINESS SERVICES", c3: "PASREL / EDIFACT", c4: "FR388910234", c5: "Agréé PDP" }]
+            },
+            "GROUPE CARREFOUR HYPERMARCHES": {
+                COMMANDE: [{ c1: "CMD-CARR-1044", c2: "Approvisionnement Rayons Frais", c3: "Centrale Achat", c4: "84 250 €", c5: "En cours" }],
+                ENTITES: [{ c1: "ENT-CARR-SIEGE", c2: "SIEGE SOCIAL MASSY", c3: "45132133500012", c4: "Massy (91)", c5: "Direction" }],
+                FOURNISSEUR: [{ c1: "FOURN-DANONE", c2: "DANONE PRODUITS FRAIS", c3: "EDIFACT ORDERS/INVOIC", c4: "FR557891234", c5: "Fournisseur Direct" }]
+            }
+        };
+
+        function populateDoDropdowns() {
+            const refSelect = document.getElementById('ref-client-do');
+            const flowSelect = document.getElementById('flx-client-do');
+            const options = doList.map(d => `<option value="${d.societe}">${d.societe}</option>`).join('');
+            if (refSelect) refSelect.innerHTML = options;
+            if (flowSelect) flowSelect.innerHTML = options;
+            onDoSelectionChange();
+        }
+
+        function onDoSelectionChange() {
+            const doSoc = document.getElementById('ref-client-do').value;
+            document.getElementById('lbl-target-do').textContent = doSoc;
+            searchReferentiel();
+        }
+
+        function searchReferentiel() {
+            const doSoc = document.getElementById('ref-client-do').value;
+            const cat = document.getElementById('ref-categorie').value;
+            const keyword = document.getElementById('ref-keyword').value.toLowerCase().trim();
+            const head = document.getElementById('ref-table-head');
+            const tbody = document.getElementById('ref-table-body');
+            const title = document.getElementById('ref-results-title');
+
+            let catLabel = "Commandes";
+            if (cat === "ENTITES") catLabel = "Entités Juridiques";
+            if (cat === "FOURNISSEUR") catLabel = "Fournisseurs Agréés";
+
+            title.textContent = `Données du Référentiel : ${catLabel} (${doSoc})`;
+
+            if (cat === "COMMANDE") {
+                head.innerHTML = `<tr><th>N° Commande</th><th>Désignation / Objet</th><th>Identifiant / Type</th><th>Montant HT</th><th>Statut</th></tr>`;
+            } else if (cat === "ENTITES") {
+                head.innerHTML = `<tr><th>Code Entité</th><th>Raison / Libellé</th><th>SIRET</th><th>Localisation</th><th>Type</th></tr>`;
+            } else {
+                head.innerHTML = `<tr><th>Code Fournisseur</th><th>Raison Sociale</th><th>Protocole</th><th>N° TVA</th><th>Statut</th></tr>`;
+            }
+
+            const clientData = (referentielDB[doSoc] && referentielDB[doSoc][cat]) ? referentielDB[doSoc][cat] : [];
+            const filtered = clientData.filter(item => !keyword || item.c1.toLowerCase().includes(keyword) || item.c2.toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.2rem;">Aucune donnée dans le référentiel pour ce client DO.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(r => `
+                <tr>
+                    <td><strong>${r.c1}</strong></td><td>${r.c2}</td><td><code>${r.c3}</code></td><td><strong>${r.c4}</strong></td><td><span class="status-badge badge-ok">${r.c5}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function addReferentielEntry() {
+            const doSoc = document.getElementById('ref-client-do').value;
+            const cat = document.getElementById('ref-categorie').value;
+            const c1 = document.getElementById('impl-c1').value.trim();
+            const c2 = document.getElementById('impl-c2').value.trim();
+            const c3 = document.getElementById('impl-c3').value.trim();
+            const c4 = document.getElementById('impl-c4').value.trim();
+
+            if (!c1 || !c2) return alert("Référence et désignation requises.");
+            if (!referentielDB[doSoc]) referentielDB[doSoc] = { COMMANDE: [], ENTITES: [], FOURNISSEUR: [] };
+            if (!referentielDB[doSoc][cat]) referentielDB[doSoc][cat] = [];
+
+            referentielDB[doSoc][cat].unshift({ c1, c2, c3: c3 || "N/A", c4: c4 || "N/A", c5: "Validée" });
+            searchReferentiel();
+            alert("✅ Entrée implémentée dans le référentiel !");
+        }
+
+        // ==========================================
+        // 6. REPORTING CSV EXPORT
+        // ==========================================
+        function exportDailyCsv() {
+            const csv = "data:text/csv;charset=utf-8,Type;Volume;Statut\nInvoices;1428;OK\nOrders;342;OK\nRepositories;1890;OK\nOtherData;8;OK";
+            const link = document.createElement("a");
+            link.href = encodeURI(csv);
+            link.download = "Reporting_Journalier_Complet.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // 7. MONITORING REEL
+        // ==========================================
+        async function testHealth(port) {
+            const badge = document.getElementById(`badge-${port}`);
+            const ping = document.getElementById(`ping-${port}`);
+            const t0 = performance.now();
+            try {
+                // Même hôte que la page, autre port. Les autres ports sont d'autres origines (pas d'en-tête CORS) :
+                // le mode no-cors suffit à savoir si le serveur répond (réponse opaque), sans lire son contenu.
+                const sameOrigin = String(port) === (window.location.port || (window.location.protocol === 'https:' ? '443' : '80'));
+                const url = `${window.location.protocol}//${window.location.hostname}:${port}/health`;
+                const res = await fetch(url, { mode: sameOrigin ? 'cors' : 'no-cors', cache: 'no-store' });
+                const t1 = performance.now();
+                if (res.ok || res.type === 'opaque') {
+                    badge.className = "status-badge badge-ok";
+                    badge.textContent = "EN TRAVAIL";
+                    ping.textContent = Math.round(t1 - t0) + " ms";
+                } else throw new Error();
+            } catch (e) {
+                badge.className = "status-badge badge-err";
+                badge.textContent = "ARRÊTÉ";
+                ping.textContent = "-";
+            }
+        }
+
+        function pingAllServers() {
+            testHealth(8080);
+            testHealth(8081);
+            testHealth(8082);
+        }
+
+        function logout() { Auth.logout(); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('adminEmailLabel').textContent = sessionStorage.getItem('userEmail') || '';
+            renderDoTable();
+            populateDoDropdowns();
+            renderResults(storedDocuments);
+            renderFlowsTable();
+            pingAllServers();
+        });
+    </script>
+</body>
+</html>
+

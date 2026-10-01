@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Télécharger les dépendances
+        run: go mod download
+
+      - name: Analyse statique
+        run: go vet ./...
+
+      - name: Compilation
+        run: go build -v ./...
+
+      - name: Tests (avec détecteur de courses)
+        run: go test -race -count=1 ./...
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # informatif : ne bloque pas les fusions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Vulnérabilités connues
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

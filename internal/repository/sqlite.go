@@ -1,0 +1,210 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
+	_ "modernc.org/sqlite"
+)
+
+var (
+	// ErrDuplicate : l'identifiant ou le numéro de facture existe déjà pour ce propriétaire.
+	ErrDuplicate = errors.New("facture déjà enregistrée (identifiant ou numéro en double)")
+	// ErrNotFound : aucune facture ne correspond (ou elle appartient à un autre propriétaire).
+	ErrNotFound = errors.New("facture introuvable")
+)
+
+const dayLayout = "2006-01-02"
+
+// DailyReport représente le rapport agrégé d'une journée
+type DailyReport struct {
+	Date          string  `json:"date"`
+	TotalInvoices int     `json:"total_invoices"`
+	TotalHT       float64 `json:"total_ht"`
+	TotalVAT      float64 `json:"total_vat"`
+	TotalTTC      float64 `json:"total_ttc"`
+}
+
+// SQLiteInvoiceRepository stocke les factures structurées.
+//
+// Convention de propriétaire : owner == "" signifie "sans filtre" (administrateur
+// ou données historiques). Un client a toujours un owner non vide (son tenant).
+type SQLiteInvoiceRepository struct {
+	db *sql.DB
+}
+
+func NewSQLiteInvoiceRepository(db *sql.DB) (*SQLiteInvoiceRepository, error) {
+	repo := &SQLiteInvoiceRepository{db: db}
+	if err := repo.initTable(); err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+func (r *SQLiteInvoiceRepository) initTable() error {
+	const create = `
+	CREATE TABLE IF NOT EXISTS invoices (
+		id TEXT PRIMARY KEY,
+		number TEXT NOT NULL,
+		customer TEXT NOT NULL,
+		issue_date DATETIME,
+		items_json TEXT NOT NULL,
+		total_ht REAL NOT NULL,
+		total_vat REAL NOT NULL,
+		total_ttc REAL NOT NULL,
+		is_validated INTEGER NOT NULL,
+		owner TEXT NOT NULL DEFAULT '',
+		issue_day TEXT NOT NULL DEFAULT ''
+	);`
+	if _, err := r.db.Exec(create); err != nil {
+		return err
+	}
+
+	// Migration des bases créées avant l'ajout de ces colonnes : l'erreur
+	// "duplicate column name" signifie simplement que la colonne existe déjà.
+	for _, alter := range []string{
+		`ALTER TABLE invoices ADD COLUMN owner TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE invoices ADD COLUMN issue_day TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := r.db.Exec(alter); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("migration : %w", err)
+		}
+	}
+	if _, err := r.db.Exec(`UPDATE invoices SET issue_day = substr(issue_date, 1, 10) WHERE issue_day = ''`); err != nil {
+		return fmt.Errorf("migration issue_day : %w", err)
+	}
+
+	// Un numéro de facture est unique par émetteur (exigence de numérotation).
+	if _, err := r.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_owner_number ON invoices(owner, number)`); err != nil {
+		return fmt.Errorf("index d'unicité des numéros (doublons existants ?) : %w", err)
+	}
+	return nil
+}
+
+// Ping vérifie la connexion à la base.
+func (r *SQLiteInvoiceRepository) Ping(ctx context.Context) error { return r.db.PingContext(ctx) }
+
+// Save enregistre une facture sans propriétaire (compatibilité).
+func (r *SQLiteInvoiceRepository) Save(inv invoice.Invoice) error { return r.SaveFor("", inv) }
+
+// SaveFor enregistre une facture pour un propriétaire donné.
+func (r *SQLiteInvoiceRepository) SaveFor(owner string, inv invoice.Invoice) error {
+	itemsBytes, err := json.Marshal(inv.Items)
+	if err != nil {
+		return err
+	}
+
+	issue := inv.IssueDate
+	if issue.IsZero() {
+		issue = time.Now()
+	}
+
+	isValidated := 0
+	if inv.IsValidated {
+		isValidated = 1
+	}
+
+	_, err = r.db.Exec(`
+		INSERT INTO invoices (id, number, customer, issue_date, items_json, total_ht, total_vat, total_ttc, is_validated, owner, issue_day)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		inv.ID, inv.Number, inv.Customer, issue.UTC(), string(itemsBytes),
+		inv.TotalHT, inv.TotalVAT, inv.TotalTTC, isValidated, owner, issue.UTC().Format(dayLayout),
+	)
+	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		return ErrDuplicate
+	}
+	return err
+}
+
+// GetAll renvoie toutes les factures, tous propriétaires confondus.
+func (r *SQLiteInvoiceRepository) GetAll() ([]invoice.Invoice, error) { return r.ListFor("") }
+
+const selectCols = `SELECT id, number, customer, issue_date, items_json, total_ht, total_vat, total_ttc, is_validated FROM invoices`
+
+// ListFor renvoie les factures d'un propriétaire (owner == "" : toutes).
+func (r *SQLiteInvoiceRepository) ListFor(owner string) ([]invoice.Invoice, error) {
+	rows, err := r.db.Query(selectCols+` WHERE (? = '' OR owner = ?) ORDER BY issue_day DESC, number`, owner, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var invoices []invoice.Invoice
+	for rows.Next() {
+		inv, err := scanInvoice(rows)
+		if err != nil {
+			return nil, err
+		}
+		invoices = append(invoices, inv)
+	}
+	return invoices, rows.Err()
+}
+
+// GetFor renvoie une facture si elle appartient au propriétaire (owner == "" : sans filtre).
+func (r *SQLiteInvoiceRepository) GetFor(id, owner string) (*invoice.Invoice, error) {
+	row := r.db.QueryRow(selectCols+` WHERE id = ? AND (? = '' OR owner = ?)`, id, owner, owner)
+	inv, err := scanInvoice(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+type scanner interface{ Scan(dest ...any) error }
+
+func scanInvoice(s scanner) (invoice.Invoice, error) {
+	var inv invoice.Invoice
+	var itemsJSON string
+	var isValidated int
+	var issueDate sql.NullTime
+
+	if err := s.Scan(&inv.ID, &inv.Number, &inv.Customer, &issueDate,
+		&itemsJSON, &inv.TotalHT, &inv.TotalVAT, &inv.TotalTTC, &isValidated); err != nil {
+		return inv, err
+	}
+	inv.IssueDate = issueDate.Time // zéro si la colonne est NULL (anciennes lignes)
+	inv.IsValidated = isValidated == 1
+	if err := json.Unmarshal([]byte(itemsJSON), &inv.Items); err != nil {
+		return inv, err
+	}
+	return inv, nil
+}
+
+// GetDailyReport génère la synthèse d'une journée, tous propriétaires confondus.
+func (r *SQLiteInvoiceRepository) GetDailyReport(dateStr string) (*DailyReport, error) {
+	return r.DailyReportFor("", dateStr)
+}
+
+// DailyReportFor génère la synthèse d'une journée (AAAA-MM-JJ) pour un propriétaire.
+// Le regroupement se fait sur la colonne issue_day, indépendante du format de
+// stockage des dates par le pilote SQLite.
+func (r *SQLiteInvoiceRepository) DailyReportFor(owner, dateStr string) (*DailyReport, error) {
+	day, err := time.Parse(dayLayout, dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("date invalide (format AAAA-MM-JJ attendu) : %w", err)
+	}
+
+	report := &DailyReport{Date: day.Format(dayLayout)}
+	err = r.db.QueryRow(`
+		SELECT COUNT(*),
+		       COALESCE(SUM(total_ht), 0.0),
+		       COALESCE(SUM(total_vat), 0.0),
+		       COALESCE(SUM(total_ttc), 0.0)
+		FROM invoices
+		WHERE issue_day = ? AND (? = '' OR owner = ?)`,
+		report.Date, owner, owner,
+	).Scan(&report.TotalInvoices, &report.TotalHT, &report.TotalVAT, &report.TotalTTC)
+	if err != nil {
+		return nil, err
+	}
+	return report, nil
+}

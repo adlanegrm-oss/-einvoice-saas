@@ -1,0 +1,82 @@
+# Trois environnements isolés (base SQLite et archives distinctes, secrets distincts).
+# Copiez .env.example vers .env et renseignez TOUS les secrets avant de lancer :
+#   docker compose up -d --build
+
+x-common: &common
+  build:
+    context: .
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # 1. RECETTE : tests internes et validation des schémas
+  einvoice-recette:
+    <<: *common
+    container_name: einvoice-saas-recette
+    ports:
+      - "8081:8080"
+    environment:
+      APP_ENV: RECETTE
+      DB_NAME: invoices_recette.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_RECETTE:-http://localhost:8081}
+      JWT_SECRET: ${JWT_SECRET_RECETTE:?définir JWT_SECRET_RECETTE dans .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_RECETTE:?définir ADMIN_PASSWORD_RECETTE dans .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - recette-data:/data
+
+  # 2. PRÉ-PRODUCTION : qualification partenaires
+  einvoice-preprod:
+    <<: *common
+    container_name: einvoice-saas-preprod
+    ports:
+      - "8082:8080"
+    environment:
+      APP_ENV: PREPROD
+      DB_NAME: invoices_preprod.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_PREPROD:-http://localhost:8082}
+      JWT_SECRET: ${JWT_SECRET_PREPROD:?définir JWT_SECRET_PREPROD dans .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_PREPROD:?définir ADMIN_PASSWORD_PREPROD dans .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - preprod-data:/data
+
+  # 3. PRODUCTION
+  einvoice-prod:
+    <<: *common
+    container_name: einvoice-saas-prod
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: PROD
+      DB_NAME: invoices.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_PROD:?définir PUBLIC_BASE_URL_PROD dans .env (URL https publique)}
+      JWT_SECRET: ${JWT_SECRET_PROD:?définir JWT_SECRET_PROD dans .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_PROD:?définir ADMIN_PASSWORD_PROD dans .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - prod-data:/data
+
+volumes:
+  recette-data:
+  preprod-data:
+  prod-data:

@@ -1,0 +1,8 @@
+@"
+.env
+data/
+*.db
+*.log
+bin/
+tmp/
+"@ | Out-File -Encoding utf8 .gitignore

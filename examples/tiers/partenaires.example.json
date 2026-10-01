@@ -1,0 +1,4 @@
+[
+  { "client": "CLI-001_TOTAL",     "siren": "123456789", "statut": "ACTIF" },
+  { "client": "CLI-002_CARREFOUR", "siren": "123456789", "statut": "ACTIF" }
+]

@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+data/
+archives/
+test/
+test-results/
+node_modules/
+*.zip
+*.md
