@@ -13,3 +13,6 @@ test-results/
 node_modules/
 *.zip
 *.md
+
+*.exe
+server.exe

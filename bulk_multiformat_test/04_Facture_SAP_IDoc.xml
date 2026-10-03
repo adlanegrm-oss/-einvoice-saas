@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<INVOIC02>
+    <IDOC BEGIN="1">
+        <EDI_DC40 SEGMENT="1">
+            <TABNAM>EDI_DC40</TABNAM>
+            <DIRECT>2</DIRECT>
+            <IDOCTYP>INVOIC02</IDOCTYP>
+            <MESTYP>INVOIC</MESTYP>
+            <SNDPRT>LS</SNDPRT>
+            <SNDPRN>TOTAL_SAP</SNDPRN>
+            <RCVPRT>LS</RCVPRT>
+            <RCVPRN>CARREFOUR</RCVPRN>
+        </EDI_DC40>
+        <E1EDK01 SEGMENT="1">
+            <BELNR>INV-SAP-2026-004</BELNR>
+            <CURCY>EUR</CURCY>
+            <HWAER>EUR</HWAER>
+            <WKURS>1.00000</WKURS>
+        </E1EDK01>
+        <E1EDK14 SEGMENT="1">
+            <QUALF>012</QUALF>
+            <ORGID>380</ORGID>
+        </E1EDK14>
+        <E1EDK03 SEGMENT="1">
+            <IDDAT>012</IDDAT>
+            <DATUM>20261002</DATUM>
+        </E1EDK03>
+        <E1EDKA1 SEGMENT="1">
+            <PARVW>LF</PARVW>
+            <PARTN>54205118000045</PARTN>
+            <NAME1>TOTAL ENERGIES MARKETING FRANCE</NAME1>
+            <LAND1>FR</LAND1>
+            <VATREG_NO>FR54542051180</VATREG_NO>
+        </E1EDKA1>
+        <E1EDKA1 SEGMENT="1">
+            <PARVW>WE</PARVW>
+            <PARTN>45132133500012</PARTN>
+            <NAME1>GROUPE CARREFOUR HYPERMARCHES</NAME1>
+            <LAND1>FR</LAND1>
+            <VATREG_NO>FR45451321335</VATREG_NO>
+        </E1EDKA1>
+        <E1EDP01 SEGMENT="1">
+            <POSEX>000010</POSEX>
+            <MENGE>1.000</MENGE>
+            <MENEE>C62</MENEE>
+            <NETWR>3200.00</NETWR>
+            <E1EDP19 SEGMENT="1">
+                <QUALF>001</QUALF>
+                <KTEXT>Connecteur SAP NetWeaver EDI IDoc</KTEXT>
+            </E1EDP19>
+        </E1EDP01>
+        <E1EDS01 SEGMENT="1">
+            <SUMID>005</SUMID>
+            <SUMME>3200.00</SUMME>
+            <SUNIT>EUR</SUNIT>
+        </E1EDS01>
+        <E1EDS01 SEGMENT="1">
+            <SUMID>010</SUMID>
+            <SUMME>640.00</SUMME>
+            <SUNIT>EUR</SUNIT>
+        </E1EDS01>
+        <E1EDS01 SEGMENT="1">
+            <SUMID>011</SUMID>
+            <SUMME>3840.00</SUMME>
+            <SUNIT>EUR</SUNIT>
+        </E1EDS01>
+    </IDOC>
+</INVOIC02>

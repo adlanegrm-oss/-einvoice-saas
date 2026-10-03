@@ -1,10 +1,44 @@
-@"
+@'
 .env
+.env.*
+!.env.example
 data/
+archives/
 *.db
+*.db-wal
+*.db-shm
+*.sqlite
 *.log
 bin/
 tmp/
-"@ | Out-File -Encoding utf8 .gitignore
-server.exe
 *.exe
+node_modules/
+test-results/
+.vscode/
+.idea/
+'@ | Set-Content -Path ".gitignore" -Encoding UTF8
+
+@'
+* text=auto eol=lf
+*.go text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.exe binary
+*.db binary
+'@ | Set-Content -Path ".gitattributes" -Encoding UTF8Call of Duty - Black Ops II (World)/
+-einvoice-saas-main/
+einvoice-saas-release1/
+*.zip
+
+coverage
+*.exe
+*.test
+
+coverage
+*.exe
+*.test
+
+Call of Duty - Black Ops II (World)/

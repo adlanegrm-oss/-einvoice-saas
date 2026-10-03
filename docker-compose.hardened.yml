@@ -1,0 +1,97 @@
+# Correctif de déploiement durci — Sprint 0
+# L'application n'est PAS publiée directement.
+# Le reverse-proxy (Caddy / Traefik / nginx) doit accéder
+# au réseau interne "einvoice".
+#
+# Usage :
+#   cp .env.example.hardened .env   # puis renseigner les secrets
+#   docker compose -f docker-compose.hardened.yml up -d --build
+
+x-common: &common
+  build:
+    context: .
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  pids_limit: 256
+  mem_limit: 512m
+  cpus: "1.0"
+  networks:
+    - einvoice
+
+services:
+  einvoice-recette:
+    <<: *common
+    container_name: einvoice-saas-recette
+    environment:
+      APP_ENV: RECETTE
+      DB_NAME: invoices_recette.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_RECETTE:?définir PUBLIC_BASE_URL_RECETTE}
+      JWT_SECRET: ${JWT_SECRET_RECETTE:?définir JWT_SECRET_RECETTE}
+      ADMIN_EMAIL: ${ADMIN_EMAIL_RECETTE:?définir ADMIN_EMAIL_RECETTE}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_RECETTE:?définir ADMIN_PASSWORD_RECETTE}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - recette-data:/data
+    expose:
+      - "8080"
+
+  einvoice-preprod:
+    <<: *common
+    container_name: einvoice-saas-preprod
+    environment:
+      APP_ENV: PREPROD
+      DB_NAME: invoices_preprod.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_PREPROD:?définir PUBLIC_BASE_URL_PREPROD}
+      JWT_SECRET: ${JWT_SECRET_PREPROD:?définir JWT_SECRET_PREPROD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL_PREPROD:?définir ADMIN_EMAIL_PREPROD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_PREPROD:?définir ADMIN_PASSWORD_PREPROD}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - preprod-data:/data
+    expose:
+      - "8080"
+
+  einvoice-prod:
+    <<: *common
+    container_name: einvoice-saas-prod
+    environment:
+      APP_ENV: PROD
+      DB_NAME: invoices.db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL_PROD:?définir PUBLIC_BASE_URL_PROD}
+      JWT_SECRET: ${JWT_SECRET_PROD:?définir JWT_SECRET_PROD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL_PROD:?définir ADMIN_EMAIL_PROD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD_PROD:?définir ADMIN_PASSWORD_PROD}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - prod-data:/data
+    expose:
+      - "8080"
+
+networks:
+  einvoice:
+    driver: bridge
+    internal: true
+
+volumes:
+  recette-data:
+  preprod-data:
+  prod-data:

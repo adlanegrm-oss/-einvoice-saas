@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "modernc.org/sqlite" // ou _ "github.com/mattn/go-sqlite3" selon ton build
+
 	"github.com/adlanegrm-oss/einvoice-saas/internal/auth"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/config"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/handler"
@@ -280,10 +282,8 @@ func main() {
 		slog.Error("erreur lors de l'arrêt du serveur HTTP", "error", err)
 	}
 
-	// 2. Annulation des tâches de fond (purger)
+	// 2. Annulation explicite des contextes dérivés si nécessaire
 	stop()
 
-	// 3. Fermeture explicite des ressources (base et worker pool)
-	a.Close()
 	slog.Info("serveur arrêté proprement")
 }

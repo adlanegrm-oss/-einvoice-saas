@@ -1,0 +1,45 @@
+# Exemple de frontal TLS (Caddy)
+# Adapter les domaines à votre DNS.
+#
+# Caddy gère automatiquement le certificat ACME
+# lorsque DNS + firewall permettent la validation HTTP-01 ou DNS-01.
+
+# Recette
+recette.example.fr {
+    reverse_proxy einvoice-recette:8080
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+
+# Pré-production
+preprod.example.fr {
+    reverse_proxy einvoice-preprod:8080
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+
+# Production
+facturation.example.fr {
+    reverse_proxy einvoice-prod:8080
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"
+        -Server
+    }
+}
