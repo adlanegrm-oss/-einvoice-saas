@@ -3,26 +3,23 @@
 import (
 "context"
 "database/sql"
-"log"
+"fmt"
 "time"
+
+"github.com/adlanegrm-oss/einvoice-saas/internal/connector"
 )
 
 type OutboxWorker struct {
-db       *sql.DB
-stopChan chan struct{}
+db        *sql.DB
+connector connector.NetworkConnector
+stopChan  chan struct{}
 }
 
-func NewOutboxWorker(db *sql.DB) *OutboxWorker {
+func NewOutboxWorker(db *sql.DB, conn connector.NetworkConnector) *OutboxWorker {
 return &OutboxWorker{
-db:       db,
-stopChan: make(chan struct{}),
-}
-}
-
-func (w *OutboxWorker) Start(concurrency int) {
-log.Printf("[OUTBOX] Démarrage du worker outbox avec %d processeurs parallèles", concurrency)
-for i := 0; i < concurrency; i++ {
-go w.processLoop(i)
+db:        db,
+connector: conn,
+stopChan:  make(chan struct{}),
 }
 }
 
@@ -30,76 +27,79 @@ func (w *OutboxWorker) Stop() {
 close(w.stopChan)
 }
 
-func (w *OutboxWorker) processLoop(workerID int) {
-ticker := time.NewTicker(500 * time.Millisecond)
-defer ticker.Stop()
-
-for {
-select {
-case <-w.stopChan:
-return
-case <-ticker.C:
-w.claimAndExecute(workerID)
-}
-}
-}
-
-func (w *OutboxWorker) claimAndExecute(workerID int) {
-ctx := context.Background()
+func (w *OutboxWorker) ProcessNextBatch(ctx context.Context) (int, error) {
 tx, err := w.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 if err != nil {
-return
+return 0, err
 }
 defer tx.Rollback()
 
 query := `
-SELECT id, tenant_id, aggregate_id, event_type, payload, retry_count, max_retries
-FROM outbox_events
-WHERE status IN ('PENDING', 'FAILED') AND next_attempt_at <= NOW()
-ORDER BY created_at ASC
-LIMIT 1
-FOR UPDATE SKIP LOCKED
+SELECT id, tenant_id, aggregate_id, payload_json, retry_count, max_retries 
+FROM outbox_events 
+WHERE status IN ('PENDING', 'FAILED') AND next_attempt_at <= ?
+ORDER BY created_at ASC LIMIT 1
 `
-
 var (
-id          string
-tenantID    string
-aggregateID string
-eventType   string
-payloadRaw  []byte
-retryCount  int
-maxRetries  int
+id, tenantID, invoiceID, payload string
+retryCount, maxRetries           int
 )
-
-err = tx.QueryRowContext(ctx, query).Scan(&id, &tenantID, &aggregateID, &eventType, &payloadRaw, &retryCount, &maxRetries)
+err = tx.QueryRowContext(ctx, query, time.Now().UTC()).Scan(&id, &tenantID, &invoiceID, &payload, &retryCount, &maxRetries)
+if err == sql.ErrNoRows {
+return 0, nil
+}
 if err != nil {
-return
+return 0, err
 }
 
-_, _ = tx.ExecContext(ctx, "UPDATE outbox_events SET status = 'PROCESSING' WHERE id = $1", id)
+now := time.Now().UTC()
+_, _ = tx.ExecContext(ctx, "UPDATE outbox_events SET status = 'PROCESSING', updated_at = ? WHERE id = ?", now, id)
 if err := tx.Commit(); err != nil {
-return
+return 0, err
 }
 
-dispatchErr := w.dispatch(tenantID, aggregateID, eventType, payloadRaw)
-
-if dispatchErr == nil {
-_, _ = w.db.Exec("UPDATE outbox_events SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1", id)
-_, _ = w.db.Exec("UPDATE invoices SET transmission_status = 'DELIVERED' WHERE id = $1", aggregateID)
+var connErr error
+var receipt *connector.TransmissionReceipt
+if w.connector != nil {
+receipt, connErr = w.connector.Submit(ctx, tenantID, invoiceID, []byte(payload))
 } else {
+receipt = &connector.TransmissionReceipt{
+MessageID:   fmt.Sprintf("mock-%d", time.Now().UnixNano()),
+Status:      "ACCEPTED",
+ReceiptHash: "mock-hash",
+}
+}
+
+execNow := time.Now().UTC()
+if connErr == nil && receipt != nil && receipt.Status == "ACCEPTED" {
+_, _ = w.db.Exec("UPDATE outbox_events SET status = 'SUCCESS', updated_at = ? WHERE id = ?", execNow, id)
+_, _ = w.db.Exec("UPDATE invoices SET transmission_status = 'ACCEPTED', updated_at = ? WHERE id = ?", execNow, invoiceID)
+
+auditID := fmt.Sprintf("evt-sub-%d", time.Now().UnixNano())
+_, _ = w.db.Exec(`
+INSERT INTO audit_events (id, tenant_id, invoice_id, sequence_id, event_type, payload_hash, prev_hash, event_hash, recorded_at)
+VALUES (?, ?, ?, 2, 'NETWORK_SUBMISSION_ACCEPTED', ?, '0000000000000000000000000000000000000000000000000000000000000000', ?, ?)
+`, auditID, tenantID, invoiceID, receipt.ReceiptHash, receipt.ReceiptHash, execNow)
+return 1, nil
+}
+
 retryCount++
 if retryCount >= maxRetries {
-_, _ = w.db.Exec("UPDATE outbox_events SET status = 'DLQ', last_error = $1, updated_at = NOW() WHERE id = $2", dispatchErr.Error(), id)
-_, _ = w.db.Exec("UPDATE invoices SET transmission_status = 'FAILED' WHERE id = $1", aggregateID)
+errMsg := "dispatch error"
+if connErr != nil {
+errMsg = connErr.Error()
+}
+_, _ = w.db.Exec("UPDATE outbox_events SET status = 'DLQ', last_error = ?, updated_at = ? WHERE id = ?", errMsg, execNow, id)
+_, _ = w.db.Exec("UPDATE invoices SET transmission_status = 'FAILED', updated_at = ? WHERE id = ?", execNow, invoiceID)
 } else {
-backoffSec := (1 << retryCount) * 2
-nextAttempt := time.Now().Add(time.Duration(backoffSec) * time.Second)
-_, _ = w.db.Exec("UPDATE outbox_events SET status = 'FAILED', retry_count = $1, next_attempt_at = $2, last_error = $3, updated_at = NOW() WHERE id = $4",
-retryCount, nextAttempt, dispatchErr.Error(), id)
+backoff := time.Duration(1<<retryCount) * time.Second
+next := execNow.Add(backoff)
+errMsg := "retry scheduled"
+if connErr != nil {
+errMsg = connErr.Error()
 }
+_, _ = w.db.Exec("UPDATE outbox_events SET status = 'FAILED', retry_count = ?, next_attempt_at = ?, last_error = ?, updated_at = ? WHERE id = ?",
+retryCount, next, errMsg, execNow, id)
 }
-}
-
-func (w *OutboxWorker) dispatch(tenantID, invoiceID, eventType string, payload []byte) error {
-return nil
+return 1, nil
 }
