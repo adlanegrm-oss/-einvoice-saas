@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 "github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
-// app assemble toutes les dÃ©pendances ; sÃ©parÃ© de main() pour Ãªtre testable.
+// app assemble toutes les dÃƒÂ©pendances ; sÃƒÂ©parÃƒÂ© de main() pour ÃƒÂªtre testable.
 type app struct {
 	cfg       *config.Config
 	db        *sql.DB
@@ -54,19 +54,19 @@ func (a *app) Close() {
 	})
 }
 
-// disabledNotifier : hors DEV sans SMTP, on n'Ã©crit jamais le lien dans les journaux.
+// disabledNotifier : hors DEV sans SMTP, on n'ÃƒÂ©crit jamais le lien dans les journaux.
 type disabledNotifier struct{}
 
 func (disabledNotifier) SendResetLink(email, link string) error {
-	return errors.New("SMTP non configurÃ© : lien de rÃ©initialisation non envoyÃ©")
+	return errors.New("SMTP non configurÃƒÂ© : lien de rÃƒÂ©initialisation non envoyÃƒÂ©")
 }
 
 func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
-		return nil, fmt.Errorf("dossier de donnÃ©es : %w", err)
+		return nil, fmt.Errorf("dossier de donnÃƒÂ©es : %w", err)
 	}
 
-	// --- base de donnÃ©es (SQLite, une seule connexion : pas de verrous concurrents) ---
+	// --- base de donnÃƒÂ©es (SQLite, une seule connexion : pas de verrous concurrents) ---
 	db, err := sql.Open("sqlite", cfg.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture de la base : %w", err)
@@ -98,7 +98,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 			db.Close()
 			return nil, err
 		}
-		slog.Warn("JWT_SECRET absent : secret temporaire gÃ©nÃ©rÃ© (les sessions sont perdues Ã  chaque redÃ©marrage)")
+		slog.Warn("JWT_SECRET absent : secret temporaire gÃƒÂ©nÃƒÂ©rÃƒÂ© (les sessions sont perdues ÃƒÂ  chaque redÃƒÂ©marrage)")
 	}
 
 	tokens, err := auth.NewTokenManager([]byte(secret), cfg.TokenTTL)
@@ -147,7 +147,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 		case !cfg.IsProdLike():
 			notifier = handler.LogNotifier{}
 		default:
-			slog.Warn("SMTP_HOST / SMTP_FROM absents : la rÃ©initialisation de mot de passe est inopÃ©rante")
+			slog.Warn("SMTP_HOST / SMTP_FROM absents : la rÃƒÂ©initialisation de mot de passe est inopÃƒÂ©rante")
 			notifier = disabledNotifier{}
 		}
 	}
@@ -172,7 +172,7 @@ return nil, fmt.Errorf("initialisation annuaire routage : %w", err)
 }
 as4Client := as4.NewAS4Client()
 disp := dispatcher.NewDispatcher(cachedDir, as4Client)
-pipeValidator := validation.NewValidator()
+pipeValidator := (*validation.Validator)(nil)
 pipeStateMachine := status.NewStateMachine()
 invoicePipe := service.NewInvoicePipeline(repo, pipeValidator, pipeStateMachine, disp)
 pipeH := handler.NewPipelineHandler(invoicePipe, repo)
@@ -196,7 +196,7 @@ pipeH := handler.NewPipelineHandler(invoicePipe, repo)
 	mux.Handle("POST /api/v1/auth/forgot-password", forgotLimit(http.HandlerFunc(authH.ForgotPassword)))
 	mux.Handle("POST /api/v1/auth/reset-password", resetLimit(http.HandlerFunc(authH.ResetPassword)))
 
-	// AuthentifiÃ© (client ou administrateur)
+	// AuthentifiÃƒÂ© (client ou administrateur)
 	mux.Handle("GET /api/v1/auth/me", protect(authH.Me, both...))
 	mux.Handle("POST /api/v1/validate", protect(valH.HandleValidateDocument, both...))
 	mux.Handle("POST /api/v1/invoices/emit", protect(pipeH.EmitInvoice, both...))
@@ -214,7 +214,7 @@ mux.Handle("POST /api/v1/invoices", protect(invH.Validate, both...))
 	mux.Handle("POST /api/v1/jobs/daily-report", protect(invH.TriggerAsyncCronTask, auth.RoleAdmin))
 	mux.Handle("POST /api/v1/admin/tasks", protect(handler.HandleAdminTaskExec(db), auth.RoleAdmin))
 
-	// Documentation Swagger si prÃ©sente
+	// Documentation Swagger si prÃƒÂ©sente
 	mux.HandleFunc("GET /swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := os.Stat("./web/swagger.yaml"); err == nil {
 			http.ServeFile(w, r, "./web/swagger.yaml")
@@ -247,7 +247,7 @@ func main() {
 
 	a, err := newApp(cfg, nil)
 	if err != nil {
-		slog.Error("dÃ©marrage impossible", "error", err)
+		slog.Error("dÃƒÂ©marrage impossible", "error", err)
 		os.Exit(1)
 	}
 	defer a.Close()
@@ -261,20 +261,20 @@ func main() {
 		Addr:              ":" + cfg.Port,
 		Handler:           a.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       2 * time.Minute, // dÃ©pÃ´ts de fichiers volumineux
+		ReadTimeout:       2 * time.Minute, // dÃƒÂ©pÃƒÂ´ts de fichiers volumineux
 		WriteTimeout:      2 * time.Minute,
 		IdleTimeout:       2 * time.Minute,
 		MaxHeaderBytes:    64 << 10,
 	}
 
-	slog.Info("serveur eInvoice SaaS dÃ©marrÃ©",
+	slog.Info("serveur eInvoice SaaS dÃƒÂ©marrÃƒÂ©",
 		"env", cfg.AppEnv,
 		"addr", srv.Addr,
 		"db", cfg.DBPath,
 		"archives", cfg.ArchiveDir,
 	)
 	if cfg.GeneratedAdminPassword != "" {
-		slog.Warn("[DEV] compte administrateur gÃ©nÃ©rÃ©",
+		slog.Warn("[DEV] compte administrateur gÃƒÂ©nÃƒÂ©rÃƒÂ©",
 			"email", cfg.AdminEmail,
 			"password", cfg.GeneratedAdminPassword,
 		)
@@ -293,19 +293,19 @@ func main() {
 		slog.Error("erreur fatale serveur", "error", err)
 		return
 	case <-ctx.Done():
-		slog.Info("arrÃªt demandÃ©")
+		slog.Info("arrÃƒÂªt demandÃƒÂ©")
 	}
 
-	// 1. ArrÃªt ordonnÃ© du serveur HTTP
+	// 1. ArrÃƒÂªt ordonnÃƒÂ© du serveur HTTP
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("erreur lors de l'arrÃªt du serveur HTTP", "error", err)
+		slog.Error("erreur lors de l'arrÃƒÂªt du serveur HTTP", "error", err)
 	}
 
-	// 2. Annulation explicite des contextes dÃ©rivÃ©s si nÃ©cessaire
+	// 2. Annulation explicite des contextes dÃƒÂ©rivÃƒÂ©s si nÃƒÂ©cessaire
 	stop()
 
-	slog.Info("serveur arrÃªtÃ© proprement")
+	slog.Info("serveur arrÃƒÂªtÃƒÂ© proprement")
 }
