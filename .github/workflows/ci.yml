@@ -1,43 +1,42 @@
-name: CI
+﻿name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+    branches: [ main ]
 
 jobs:
-  build-test:
+  verify:
+    name: Code Quality & Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.22'
+          check-latest: true
 
-      - name: Télécharger les dépendances
-        run: go mod download
+      - name: Verify Dependencies
+        run: go mod verify
 
-      - name: Analyse statique
+      - name: Format Check
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Fichiers non formates detectes :"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Static Analysis (go vet)
         run: go vet ./...
 
-      - name: Compilation
+      - name: Race Detection & Tests
+        run: go test -race -count=1 -v ./...
+
+      - name: Build All Binaries
         run: go build -v ./...
-
-      - name: Tests (avec détecteur de courses)
-        run: go test -race -count=1 ./...
-
-  vulncheck:
-    runs-on: ubuntu-latest
-    continue-on-error: true   # informatif : ne bloque pas les fusions
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Vulnérabilités connues
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
