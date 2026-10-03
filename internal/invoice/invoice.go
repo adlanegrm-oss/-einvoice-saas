@@ -1,6 +1,7 @@
 package invoice
 
 import (
+	"errors"
 	"math"
 	"time"
 )
@@ -64,4 +65,22 @@ func (i *Invoice) CalculateTotals() {
 	i.TotalHT = NewMoneyFromFloat(totalHT, 2, cur)
 	i.TotalVAT = NewMoneyFromFloat(totalVAT, 2, cur)
 	i.TotalTTC = NewMoneyFromFloat(totalHT+totalVAT, 2, cur)
+}
+
+
+// Validate vérifie l'intégrité minimale et les champs obligatoires de la facture.
+func (i *Invoice) Validate() error {
+	if i.Number == "" {
+		return errors.New("le numéro de facture est obligatoire")
+	}
+	if i.IssueDate.IsZero() {
+		return errors.New("la date d'émission est obligatoire")
+	}
+	if len(i.Items) == 0 {
+		return errors.New("la facture doit contenir au moins une ligne")
+	}
+	if i.TotalHT.ToFloat() < 0 || i.TotalTTC.ToFloat() < 0 {
+		return errors.New("les montants ne peuvent pas être négatifs")
+	}
+	return nil
 }

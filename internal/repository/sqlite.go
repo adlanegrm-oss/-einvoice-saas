@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -207,4 +208,84 @@ func (r *SQLiteInvoiceRepository) DailyReportFor(owner, dateStr string) (*DailyR
 		return nil, err
 	}
 	return report, nil
+}
+
+
+
+// StatusHistoryEntry enrichi avec les attributs de scellement / signature
+type StatusHistoryEntry struct {
+	InvoiceID string               `json:"invoice_id"`
+	FromState string               `json:"from_state"`
+	ToState   status.InvoiceState  `json:"to_state"`
+	Reason    string               `json:"reason,omitempty"`
+	Signature string               `json:"signature,omitempty"`
+	CreatedAt time.Time            `json:"created_at"`
+}
+
+// RecordStatusTransition conforme à l'appel de pipeline.go :
+// have: (ctx context.Context, event *status.StatusEvent, prevHash string, txID string)
+func (r *SQLiteInvoiceRepository) RecordStatusTransition(ctx context.Context, event *status.StatusEvent, arg3 string, arg4 any) error {
+	query := `
+		INSERT INTO invoice_status_history (invoice_id, from_state, to_state, reason, signature, created_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`
+
+	invID := ""
+	fromSt := ""
+	toSt := ""
+	reason := ""
+	sig := ""
+
+	if event != nil {
+		invID = event.InvoiceID
+		fromSt = string(event.FromState)
+		toSt = string(event.ToState)
+		reason = event.Reason
+		sig = event.Signature
+	}
+
+	_, err := r.db.ExecContext(ctx, query, invID, fromSt, toSt, reason, sig)
+	if err != nil {
+		createTable := `
+			CREATE TABLE IF NOT EXISTS invoice_status_history (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				invoice_id TEXT NOT NULL,
+				from_state TEXT NOT NULL,
+				to_state TEXT NOT NULL,
+				reason TEXT,
+				signature TEXT,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			);
+		`
+		if _, cErr := r.db.ExecContext(ctx, createTable); cErr == nil {
+			_, err = r.db.ExecContext(ctx, query, invID, fromSt, toSt, reason, sig)
+		}
+	}
+	return err
+}
+
+func (r *SQLiteInvoiceRepository) GetStatusHistory(ctx context.Context, invoiceID string) ([]StatusHistoryEntry, error) {
+	query := `
+		SELECT invoice_id, from_state, to_state, COALESCE(reason, ''), COALESCE(signature, ''), created_at
+		FROM invoice_status_history
+		WHERE invoice_id = ?
+		ORDER BY created_at ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, invoiceID)
+	if err != nil {
+		return []StatusHistoryEntry{}, nil
+	}
+	defer rows.Close()
+
+	var history []StatusHistoryEntry
+	for rows.Next() {
+		var h StatusHistoryEntry
+		var toStStr string
+		if err := rows.Scan(&h.InvoiceID, &h.FromState, &toStStr, &h.Reason, &h.Signature, &h.CreatedAt); err != nil {
+			return nil, err
+		}
+		h.ToState = status.InvoiceState(toStStr)
+		history = append(history, h)
+	}
+	return history, nil
 }
