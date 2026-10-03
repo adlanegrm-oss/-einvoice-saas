@@ -26,7 +26,7 @@ import (
 "github.com/adlanegrm-oss/einvoice-saas/internal/routing/directory"
 "github.com/adlanegrm-oss/einvoice-saas/internal/routing/dispatcher"
 "github.com/adlanegrm-oss/einvoice-saas/internal/service"
-"github.com/adlanegrm-oss/einvoice-saas/internal/validator/en16931"
+"github.com/adlanegrm-oss/einvoice-saas/pkg/validation"
 "github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
