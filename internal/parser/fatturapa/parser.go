@@ -116,7 +116,7 @@ qty = 1
 }
 items = append(items, invoice.InvoiceItem{
 Description: l.Descrizione,
-Quantity:    qty,
+Quantity:    float64(qty),
 UnitPrice:   invoice.NewMoneyFromFloat(l.PrezzoUnit, 2, currency),
 VATRate:     invoice.NewMoneyFromFloat(l.AliquotaIVA, 2, currency),
 })

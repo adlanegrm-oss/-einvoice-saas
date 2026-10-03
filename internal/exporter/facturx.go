@@ -67,7 +67,7 @@ func GenerateFacturXXML(inv invoice.Invoice) ([]byte, error) {
 	cii.ExchangedDocument.IssueDateTime.DateTimeString.Format = "102"
 	cii.ExchangedDocument.IssueDateTime.DateTimeString.Value = issueDate.Format("20060102")
 
-	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.BuyerTradeParty.Name = inv.Customer
+	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.BuyerTradeParty.Name = inv.Customer.Name
 	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxBasisTotalAmount = fmt.Sprintf("%.2f", inv.TotalHT)
 	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxTotalAmount = fmt.Sprintf("%.2f", inv.TotalVAT)
 	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.GrandTotalAmount = fmt.Sprintf("%.2f", inv.TotalTTC)

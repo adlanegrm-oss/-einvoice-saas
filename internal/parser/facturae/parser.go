@@ -91,7 +91,7 @@ rate = it.TaxesOutputs.Tax[0].TaxRate
 }
 items = append(items, invoice.InvoiceItem{
 Description: it.ItemDescription,
-Quantity:    int(it.Quantity),
+Quantity:    float64(it.Quantity),
 UnitPrice:   invoice.NewMoneyFromFloat(it.UnitPriceWithoutTax, 2, currency),
 VATRate:     invoice.NewMoneyFromFloat(rate, 2, currency),
 })

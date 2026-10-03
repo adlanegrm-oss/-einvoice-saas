@@ -63,7 +63,7 @@ items := make([]invoice.InvoiceItem, 0, len(k.Fa.FaWiersze))
 for _, line := range k.Fa.FaWiersze {
 items = append(items, invoice.InvoiceItem{
 Description: line.P_7,
-Quantity:    int(line.P_8B),
+Quantity:    float64(line.P_8B),
 UnitPrice:   invoice.NewMoneyFromFloat(line.P_9A, 2, currency),
 VATRate:     invoice.NewMoneyFromFloat(line.P_12, 2, currency),
 })
