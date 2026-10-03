@@ -1,21 +1,28 @@
-﻿# Matrice des Capacités & Conformité Plateforme (Octobre 2026)
+﻿# Matrice de Capacité & Vérité Technique du Dépôt (Octobre 2026)
 
-Ce document établit l'état de conformité réel, audité et technique des modules de l'API E-Invoice Infrastructure.
+> **Positionnement officiel :** Prototype technique avancé / Passerelle d'interconnexion & conformité e-invoicing B2B en cours de qualification. **Non agréé PDP / Non certifié à ce stade.**
 
-| Composant / Fonction | État Réel | Preuve / Validation | Cible de Déploiement |
-| :--- | :--- | :--- | :--- |
-| **Parsing UBL 2.1 / CII** | ✅ Production-ready | Tests unitaires & golden fixtures | Multi-tenant SaaS |
-| **Modèle Monétaire Exact** | ✅ Production-ready | Arithmétique entière (Fixed-point 4 décimales) | Multi-tenant SaaS |
-| **Validation Syntaxique XML** | ✅ Production-ready | Parser durci anti-XXE, sans DTD | Multi-tenant SaaS |
-| **Validation Règles EN 16931** | 🟡 En cours (BR-01 à BR-65) | Moteur de règles internes typées | Validation Sandbox / API |
-| **Schematron XSLT / ISO** | 🔴 Roadmap Q1 2027 | Moteur natif en cours d'évaluation | Sandbox |
-| **Factur-X (ZUGFeRD 2.2)** | 🟡 Pilote | Extraction & injection PDF/A-3 | Déploiement pilote |
-| **Transactional Outbox & DLQ** | ✅ Production-ready | Workers concurrents, backoff exponentiel | Multi-tenant SaaS |
-| **Idempotence Persistante** | ✅ Production-ready | DB backing table, détection 409 | Multi-tenant SaaS |
-| **Isolation Multi-Tenant** | ✅ Production-ready | Row-level `tenant_id` & scopes API Keys | Multi-tenant SaaS |
-| **Connecteur AS4 / ebMS3** | 🟡 Adapter Mock & TLS PoC | Client testé en environnement simulé | Pilote connecté |
-| **Routage PDP / Réseau** | 🟡 Interface abstraite | `TransportAdapter` pluggable | Partenariats PDP |
-| **Audit Trail Cryptographique** | ✅ Production-ready | Chaîne Merkle / SHA-256 scellée | Multi-tenant SaaS |
-| **Statut Réglementaire DGFiP** | ℹ️ Solution Compatible | Non immatriculée PDP (Orchestration & Validation) | B2B Middleware |
+### Statut de Maturité des Composants
 
-> **Avertissement de positionnement juridique :** La solution est une infrastructure logicielle de conformité et d'interfaçage B2B ("Solution Compatible"). Elle ne prétend pas au statut de Plateforme de Dématérialisation Partenaire (PDP) au sens de l'article 290 B du CGI.
+| Capacité / Composant | Code Source | Tests Automatisés | Statut Réel | Qualification DGFiP / Marché |
+| :--- | :---: | :---: | :---: | :--- |
+| **Authentification (PBKDF2/JWT)** | ✅ Inclus | ✅ Tests unitaires | `PRODUCTION VERIFIED` | Autonome / multi-tenant |
+| **Isolation Multi-Tenant** | ✅ Inclus | ✅ Anti-IDOR | `TESTED` | Contexte strict par `tenant_id` |
+| **Parsing UBL 2.1 & CII** | ✅ Inclus | ✅ Golden fixtures | `TESTED` | Détection & extraction typée |
+| **Idempotence Transactionnelle** | ✅ Inclus | ✅ Tests de concurrence | `TESTED` | Clé avec lock DB & détection 409 |
+| **Machine à États Irréversible** | ✅ Inclus | ✅ Transitions scellées | `TESTED` | Aucun retour en arrière possible |
+| **Outbox Asynchrone Durable** | ✅ Inclus | ✅ Retry & DLQ | `TESTED` | Survie aux crashs / redémarrages |
+| **Validation Règles EN 16931** | 🟡 Partiel | ✅ 15 règles BR/FR | `SANDBOX VERIFIED` | Moteur interne typé (Ruleset 2026.1) |
+| **Validation Schematron ISO** | 🔴 Non branché | ❌ Aucun | `NOT READY` | Évaluation moteur XSLT natif Go |
+| **Factur-X PDF/A-3 Réel** | 🟡 Extraction XML | ❌ Pas d'injection A-3 | `VERIFY` | Extraction fonctionnelle, génération A-3 non qualifiée |
+| **Connecteur PDP / PPF** | 🟡 Gateway Adapter | ✅ Mock incidents | `SANDBOX VERIFIED` | Mock réseau (Timeout, Duplicate, Rejection) |
+| **Connecteur AS4 ebMS3** | 🔴 Prototype | 🟡 Mock TLS | `NOT READY` | Nécessite certificats réels & mTLS |
+| **Audit Trail Cryptographique** | ✅ Inclus | ✅ Chaîne Merkle SHA-256 | `TESTED` | Dossier de preuve immuable vérifiable |
+
+### Niveaux de maturité utilisés
+* `CODED` : Code écrit mais non couvert de bout en bout.
+* `TESTED` : Couvert par tests unitaires et intégration en mémoire.
+* `VERIFIED` : Validé sur environnement local complet (BDD + fichiers).
+* `SANDBOX VERIFIED` : Testé avec succès contre des mocks réalistes d'API partenaires.
+* `PARTNER VERIFIED` : Validé en interopérabilité avec une plateforme tierce réelle.
+* `PRODUCTION VERIFIED` : Déployé et validé sous charge opérationnelle.
