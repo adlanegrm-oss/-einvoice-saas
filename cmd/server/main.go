@@ -21,7 +21,13 @@ import (
 	"github.com/adlanegrm-oss/einvoice-saas/internal/logger"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/middleware"
 	"github.com/adlanegrm-oss/einvoice-saas/internal/repository"
-	"github.com/adlanegrm-oss/einvoice-saas/internal/worker"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status"
+"github.com/adlanegrm-oss/einvoice-saas/internal/routing/as4"
+"github.com/adlanegrm-oss/einvoice-saas/internal/routing/directory"
+"github.com/adlanegrm-oss/einvoice-saas/internal/routing/dispatcher"
+"github.com/adlanegrm-oss/einvoice-saas/internal/service"
+"github.com/adlanegrm-oss/einvoice-saas/internal/validator/en16931"
+"github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
 // app assemble toutes les dépendances ; séparé de main() pour être testable.
@@ -158,6 +164,19 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 	authH := handler.NewAuthHandler(store, tokens, notifier, cfg.PublicBaseURL)
 	valH := handler.NewValidationHandler()
 
+// Pipeline E-Invoicing (Validation EN 16931, Machine � �tats, Dispatcher AS4 & Annuaire)
+cachedDir, err := directory.NewCachedDirectory(db, "https://directory.einvoice-gateway.fr", "dummy-api-key", 1*time.Hour)
+if err != nil {
+db.Close()
+return nil, fmt.Errorf("initialisation annuaire routage : %w", err)
+}
+as4Client := as4.NewAS4Client()
+disp := dispatcher.NewDispatcher(cachedDir, as4Client)
+pipeValidator := en16931.NewValidator()
+pipeStateMachine := status.NewStateMachine()
+invoicePipe := service.NewInvoicePipeline(repo, pipeValidator, pipeStateMachine, disp)
+pipeH := handler.NewPipelineHandler(invoicePipe, repo)
+
 	loginLimit := middleware.RateLimit(auth.NewLimiter(20, time.Minute))
 	forgotLimit := middleware.RateLimit(auth.NewLimiter(5, 15*time.Minute))
 	resetLimit := middleware.RateLimit(auth.NewLimiter(10, 15*time.Minute))
@@ -180,7 +199,10 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 	// Authentifié (client ou administrateur)
 	mux.Handle("GET /api/v1/auth/me", protect(authH.Me, both...))
 	mux.Handle("POST /api/v1/validate", protect(valH.HandleValidateDocument, both...))
-	mux.Handle("POST /api/v1/invoices", protect(invH.Validate, both...))
+	mux.Handle("POST /api/v1/invoices/emit", protect(pipeH.EmitInvoice, both...))
+mux.Handle("GET /api/v1/invoices/{id}/audit-trail", protect(pipeH.GetAuditTrail, both...))
+mux.Handle("POST /api/v1/invoices/{id}/status", protect(pipeH.UpdateStatus, both...))
+mux.Handle("POST /api/v1/invoices", protect(invH.Validate, both...))
 	mux.Handle("GET /api/v1/invoices", protect(invH.List, both...))
 	mux.Handle("GET /api/v1/invoices/export", protect(invH.ExportXML, both...))
 	mux.Handle("GET /api/v1/invoices/list", protect(archive.List, both...))
