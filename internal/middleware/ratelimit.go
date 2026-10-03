@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 "net/http"
 "sync"
 "time"
@@ -141,4 +142,14 @@ delete(l.tenantBuckets, k)
 }
 l.mu.Unlock()
 }
+}
+
+
+type tenantContextKey struct{}
+
+func TenantFrom(ctx context.Context) (string, bool) {
+	if v, ok := ctx.Value(tenantContextKey{}).(string); ok && v != "" {
+		return v, true
+	}
+	return "", false
 }
