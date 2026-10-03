@@ -7,27 +7,35 @@ import (
 "github.com/adlanegrm-oss/einvoice-saas/internal/gateway"
 )
 
-func TestGatewayMock_IncidentSimulation(t *testing.T) {
+func TestGatewayContract_ExhaustiveScenarios(t *testing.T) {
 ctx := context.Background()
 
-// 1. Test Timeout
-gwTimeout := gateway.NewMockGateway(gateway.MockTimeout)
-_, err := gwTimeout.Submit(ctx, "tenant-1", "inv-1", []byte("xml"))
-if err != gateway.ErrNetworkTimeout {
-t.Fatalf("Attendu ErrNetworkTimeout, obtenu %v", err)
+cases := []struct {
+mode        gateway.MockMode
+expectedErr error
+}{
+{gateway.MockTimeout, gateway.ErrNetworkTimeout},
+{gateway.MockDuplicate, gateway.ErrDuplicateMessage},
+{gateway.MockReject, gateway.ErrPartnerRejected},
+{gateway.MockRateLimit, gateway.ErrRateLimited},
+{gateway.MockServerError, gateway.ErrServerError},
+{gateway.MockInvalidResponse, gateway.ErrInvalidResponse},
 }
 
-// 2. Test Doublon
-gwDup := gateway.NewMockGateway(gateway.MockDuplicate)
-_, err = gwDup.Submit(ctx, "tenant-1", "inv-1", []byte("xml"))
-if err != gateway.ErrDuplicateMessage {
-t.Fatalf("Attendu ErrDuplicateMessage, obtenu %v", err)
+for _, tc := range cases {
+t.Run(string(tc.mode), func(t *testing.T) {
+gw := gateway.NewContractMockGateway(tc.mode)
+_, err := gw.Submit(ctx, "tenant-test", "inv-test", []byte("xml-content"))
+if err != tc.expectedErr {
+t.Fatalf("Mode %s: attendu %v, obtenu %v", tc.mode, tc.expectedErr, err)
+}
+})
 }
 
-// 3. Test Succès
-gwOk := gateway.NewMockGateway(gateway.MockSuccess)
-receipt, err := gwOk.Submit(ctx, "tenant-1", "inv-1", []byte("xml"))
-if err != nil || receipt.Status != "ACCEPTED" {
-t.Fatalf("Reçu non conforme en mode succès : %v", err)
+// Cas de succès nominal
+gwOk := gateway.NewContractMockGateway(gateway.MockSuccess)
+receipt, err := gwOk.Submit(ctx, "tenant-test", "inv-test", []byte("xml-content"))
+if err != nil || receipt.Status != "ACCEPTED" || receipt.ReceiptHash == "" {
+t.Fatalf("Mode SUCCESS échoué: receipt=%+v, err=%v", receipt, err)
 }
 }

@@ -16,15 +16,15 @@ EventHash   string    `json:"event_hash"`
 Timestamp   time.Time `json:"timestamp"`
 }
 
-type DossierDePreuve struct {
-InvoiceID        string     `json:"invoice_id"`
-TenantID         string     `json:"tenant_id"`
-DocumentHash     string     `json:"document_fingerprint_sha256"`
-RulesetVersion   string     `json:"ruleset_version"`
-FinalState       string     `json:"final_state"`
-ChainIntegrity   bool       `json:"chain_integrity_valid"`
-Events           []EventLog `json:"audit_trail"`
-ExportedAt       time.Time  `json:"exported_at"`
+type EvidenceDossier struct {
+InvoiceID      string     `json:"invoice_id"`
+TenantID       string     `json:"tenant_id"`
+DocumentHash   string     `json:"document_fingerprint_sha256"`
+RulesetVersion string     `json:"ruleset_version"`
+FinalState     string     `json:"final_state"`
+ChainValid     bool       `json:"chain_valid"`
+Events         []EventLog `json:"audit_trail"`
+ExportedAt     time.Time  `json:"exported_at"`
 }
 
 func HashStep(prevHash, payloadHash, eventType string, t time.Time) string {
@@ -33,7 +33,8 @@ h := sha256.Sum256([]byte(raw))
 return hex.EncodeToString(h[:])
 }
 
-func VerifyMerkleChain(events []EventLog) (bool, int) {
+// VerifyHashChain audite la chaîne séquentielle récursive : H_n = SHA256(H_{n-1} + payload + type + timestamp)
+func VerifyHashChain(events []EventLog) (bool, int) {
 currentPrev := "0000000000000000000000000000000000000000000000000000000000000000"
 for idx, e := range events {
 if e.PrevHash != currentPrev {

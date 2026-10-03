@@ -144,7 +144,7 @@ func runStage(stage Stage, h *handler.PipelineHandler) {
 					Items: []invoice.InvoiceItem{
 						{Description: "Abonnement EDI Cloud", Quantity: 1, UnitPrice: invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR), VATRate: invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR)},
 					},
-					TotalHT: invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
+					TotalHT:  invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
 					TotalVAT: invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR),
 					TotalTTC: invoice.NewMoneyFromFloat(ttc, 2, invoice.CurrencyEUR),
 				}

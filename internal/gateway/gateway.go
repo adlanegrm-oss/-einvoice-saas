@@ -13,41 +13,45 @@ var (
 ErrNetworkTimeout    = errors.New("504 GATEWAY_TIMEOUT: le tiers PDP n'a pas répondu dans le délai imparti")
 ErrDuplicateMessage  = errors.New("409 CONFLICT: message déjà reçu et traité par le réseau")
 ErrPartnerRejected   = errors.New("422 UNPROCESSABLE_ENTITY: facture rejetée par la plateforme destinataire")
-ErrServiceDown       = errors.New("503 SERVICE_UNAVAILABLE: passerelle indisponible")
+ErrRateLimited       = errors.New("429 TOO_MANY_REQUESTS: quota d'émission dépassé sur la plateforme tierce")
+ErrServerError       = errors.New("503 SERVICE_UNAVAILABLE: passerelle PDP en maintenance ou indisponible")
+ErrInvalidResponse   = errors.New("502 BAD_GATEWAY: réponse réseau malformée ou non parseable")
 )
 
 type Receipt struct {
 MessageID   string    `json:"message_id"`
 TrackingID  string    `json:"tracking_id"`
 ReceiptHash string    `json:"receipt_hash"`
-Status      string    `json:"status"`
+Status      string    `json:"status"` // ACCEPTED, DELIVERED, REJECTED
 ReceivedAt  time.Time `json:"received_at"`
 }
 
 type Gateway interface {
 Submit(ctx context.Context, tenantID, invoiceID string, payload []byte) (*Receipt, error)
-CheckStatus(ctx context.Context, trackingID string) (string, error)
+Status(ctx context.Context, trackingID string) (string, error)
 }
 
 type MockMode string
 
 const (
-MockSuccess   MockMode = "SUCCESS"
-MockTimeout   MockMode = "TIMEOUT"
-MockDuplicate MockMode = "DUPLICATE"
-MockReject    MockMode = "REJECT"
-MockDown      MockMode = "DOWN"
+MockSuccess         MockMode = "SUCCESS"
+MockTimeout         MockMode = "TIMEOUT"
+MockDuplicate       MockMode = "DUPLICATE"
+MockReject          MockMode = "REJECT"
+MockRateLimit       MockMode = "RATE_LIMIT"
+MockServerError     MockMode = "SERVER_ERROR"
+MockInvalidResponse MockMode = "INVALID_RESPONSE"
 )
 
-type AdvancedMockGateway struct {
+type ContractMockGateway struct {
 Mode MockMode
 }
 
-func NewMockGateway(mode MockMode) *AdvancedMockGateway {
-return &AdvancedMockGateway{Mode: mode}
+func NewContractMockGateway(mode MockMode) *ContractMockGateway {
+return &ContractMockGateway{Mode: mode}
 }
 
-func (m *AdvancedMockGateway) Submit(ctx context.Context, tenantID, invoiceID string, payload []byte) (*Receipt, error) {
+func (m *ContractMockGateway) Submit(ctx context.Context, tenantID, invoiceID string, payload []byte) (*Receipt, error) {
 switch m.Mode {
 case MockTimeout:
 return nil, ErrNetworkTimeout
@@ -55,8 +59,14 @@ case MockDuplicate:
 return nil, ErrDuplicateMessage
 case MockReject:
 return nil, ErrPartnerRejected
-case MockDown:
-return nil, ErrServiceDown
+case MockRateLimit:
+return nil, ErrRateLimited
+case MockServerError:
+return nil, ErrServerError
+case MockInvalidResponse:
+return nil, ErrInvalidResponse
+case MockSuccess:
+fallthrough
 default:
 h := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%d", tenantID, invoiceID, time.Now().UnixNano())))
 return &Receipt{
@@ -69,6 +79,9 @@ ReceivedAt:  time.Now().UTC(),
 }
 }
 
-func (m *AdvancedMockGateway) CheckStatus(ctx context.Context, trackingID string) (string, error) {
+func (m *ContractMockGateway) Status(ctx context.Context, trackingID string) (string, error) {
+if m.Mode == MockServerError {
+return "", ErrServerError
+}
 return "DELIVERED", nil
 }
