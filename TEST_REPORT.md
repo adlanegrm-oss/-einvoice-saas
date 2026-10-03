@@ -1,29 +1,29 @@
 ﻿?   	github.com/adlanegrm-oss/einvoice-saas	[no test files]
 ?   	github.com/adlanegrm-oss/einvoice-saas/cmd/outbox_worker	[no test files]
 === RUN   TestHealthAndStatic
---- PASS: TestHealthAndStatic (1.78s)
+--- PASS: TestHealthAndStatic (1.91s)
 === RUN   TestAPIRequiresAuthentication
-2026/10/03 20:05:08 INFO rapport journalier g├®n├®r├® date=2026-10-03 factures=0 total_ttc=0
---- PASS: TestAPIRequiresAuthentication (2.45s)
+2026/10/03 20:18:28 INFO rapport journalier g├®n├®r├® date=2026-10-03 factures=0 total_ttc=0
+--- PASS: TestAPIRequiresAuthentication (2.29s)
 === RUN   TestLogin
-2026/10/03 20:05:10 WARN ├®chec de connexion ip=127.0.0.1
-2026/10/03 20:05:10 WARN ├®chec de connexion ip=127.0.0.1
---- PASS: TestLogin (2.83s)
+2026/10/03 20:18:30 WARN ├®chec de connexion ip=127.0.0.1
+2026/10/03 20:18:30 WARN ├®chec de connexion ip=127.0.0.1
+--- PASS: TestLogin (2.35s)
 === RUN   TestPasswordResetFlow
-2026/10/03 20:05:13 WARN ├®chec de connexion ip=127.0.0.1
---- PASS: TestPasswordResetFlow (2.90s)
+2026/10/03 20:18:33 WARN ├®chec de connexion ip=127.0.0.1
+--- PASS: TestPasswordResetFlow (3.34s)
 === RUN   TestDepositListDownloadIsolation
-2026/10/03 20:05:16 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-190516-f32ee564-facture.xml status=VALIDE_PRET_A_ENVOYER format=UBL
-2026/10/03 20:05:16 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-190516-0707068f-brouillon.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
---- PASS: TestDepositListDownloadIsolation (2.52s)
+2026/10/03 20:18:37 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-191837-ecb34252-facture.xml status=VALIDE_PRET_A_ENVOYER format=UBL
+2026/10/03 20:18:37 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-191837-7c6f44fa-brouillon.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
+--- PASS: TestDepositListDownloadIsolation (2.74s)
 === RUN   TestStructuredInvoices
---- PASS: TestStructuredInvoices (2.44s)
+--- PASS: TestStructuredInvoices (2.13s)
 === RUN   TestPurgeExpiredDrafts
-2026/10/03 20:05:20 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-190520-132785fe-vieux.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
-2026/10/03 20:05:20 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-190520-33a760a3-recent.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
---- PASS: TestPurgeExpiredDrafts (1.87s)
+2026/10/03 20:18:41 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-191841-3fc8e62b-vieux.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
+2026/10/03 20:18:41 INFO document archiv├® tenant=t-f93fa2e5fb592009 stored_as=20261003-191841-11e2ff79-recent.xml status=BROUILLON_TEMPORAIRE_72H format=UNKNOWN
+--- PASS: TestPurgeExpiredDrafts (2.72s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/cmd/server	16.888s
+ok  	github.com/adlanegrm-oss/einvoice-saas/cmd/server	18.534s
 ?   	github.com/adlanegrm-oss/einvoice-saas/internal	[no test files]
 === RUN   TestAuditChainIntegrityAndTampering
     chain_test.go:33: Succ├¿s : Alt├®ration intercept├®e avec succ├¿s -> alt├®ration payload sur evt evt_2_inv_2026_001 (seq 2): hash stock├® 71a77929df4ce9827132ffb274f67e854be857af7ee2fdbb1a6cef31bf6315ef, recalcul├® a0551bca330baa2bbfd272aa35b4fea5bb8d5527783194460771c924384b557f
@@ -51,7 +51,7 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/audit	(cached)
 === RUN   TestLimiter
 --- PASS: TestLimiter (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/auth	6.971s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/auth	(cached)
 === RUN   TestPPFConnector_SubmitAndCheck
 --- PASS: TestPPFConnector_SubmitAndCheck (0.00s)
 === RUN   TestKSeFConnector_SubmitAndUPO
@@ -59,7 +59,7 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/auth	6.971s
 === RUN   TestDefaultService_ReturnsNotConfigured
 --- PASS: TestDefaultService_ReturnsNotConfigured (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/clearance	0.080s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/clearance	(cached)
 === RUN   TestValidator_EN16931
 --- PASS: TestValidator_EN16931 (0.00s)
 === RUN   TestParseSVRL_WithFailures
@@ -69,7 +69,7 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/clearance	0.080s
 === RUN   TestQuickValidateProfile_MissingMandatoryFields
 --- PASS: TestQuickValidateProfile_MissingMandatoryFields (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/compliance/en16931	0.089s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/compliance/en16931	1.035s
 === RUN   TestLoadDevDefaults
 --- PASS: TestLoadDevDefaults (0.00s)
 === RUN   TestLoadProdRequiresSecrets
@@ -77,7 +77,8 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/compliance/en16931	0.089s
 === RUN   TestLoadRejectsBadValues
 --- PASS: TestLoadRejectsBadValues (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/config	0.073s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/config	(cached)
+?   	github.com/adlanegrm-oss/einvoice-saas/internal/connector	[no test files]
 === RUN   TestPrecisionAndRounding
 --- PASS: TestPrecisionAndRounding (0.00s)
 PASS
@@ -104,6 +105,7 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/domain	(cached)
     --- PASS: TestMoney_Operations/Rejet_addition_devises_diff├®rentes (0.00s)
 PASS
 ok  	github.com/adlanegrm-oss/einvoice-saas/internal/domain/models	(cached)
+?   	github.com/adlanegrm-oss/einvoice-saas/internal/evidence	[no test files]
 === RUN   TestGenerateFacturXXML
 --- PASS: TestGenerateFacturXXML (0.00s)
 PASS
@@ -117,22 +119,22 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/exporter	(cached)
 --- PASS: TestPipelineHandler_EmitInvoice_ValidationError (0.00s)
 === RUN   TestIntegration_Deposit_MultiTenant_And_Purge
 === RUN   TestIntegration_Deposit_MultiTenant_And_Purge/D├®p├┤t_conforme_Tenant-Alpha_->_ACCEPTE
-2026/10/03 20:05:04 INFO document archiv├® tenant=tenant-alpha stored_as=20261003-190504-49cb845a-facture_alpha.xml status=VALIDE_PRET_A_ENVOYER format=UBL
+2026/10/03 20:18:24 INFO document archiv├® tenant=tenant-alpha stored_as=20261003-191824-0492c169-facture_alpha.xml status=VALIDE_PRET_A_ENVOYER format=UBL
 === RUN   TestIntegration_Deposit_MultiTenant_And_Purge/Isolation_Multi-Tenant_:_Tenant-Beta_ne_voit_pas_les_documents_de_Tenant-Alpha
 === RUN   TestIntegration_Deposit_MultiTenant_And_Purge/Isolation_Multi-Tenant_:_Tentative_de_t├®l├®chargement_direct_inter-tenant_->_404
 === RUN   TestIntegration_Deposit_MultiTenant_And_Purge/D├®p├┤t_Draft_(Brouillon_temporaire_72h)_et_cycle_de_purge
-2026/10/03 20:05:04 INFO document archiv├® tenant=tenant-alpha stored_as=20261003-190504-7020bd9e-draft_invoice.xml status=BROUILLON_TEMPORAIRE_72H format=UBL
+2026/10/03 20:18:24 INFO document archiv├® tenant=tenant-alpha stored_as=20261003-191824-144a6b0d-draft_invoice.xml status=BROUILLON_TEMPORAIRE_72H format=UBL
 --- PASS: TestIntegration_Deposit_MultiTenant_And_Purge (0.01s)
     --- PASS: TestIntegration_Deposit_MultiTenant_And_Purge/D├®p├┤t_conforme_Tenant-Alpha_->_ACCEPTE (0.01s)
     --- PASS: TestIntegration_Deposit_MultiTenant_And_Purge/Isolation_Multi-Tenant_:_Tenant-Beta_ne_voit_pas_les_documents_de_Tenant-Alpha (0.00s)
     --- PASS: TestIntegration_Deposit_MultiTenant_And_Purge/Isolation_Multi-Tenant_:_Tentative_de_t├®l├®chargement_direct_inter-tenant_->_404 (0.00s)
     --- PASS: TestIntegration_Deposit_MultiTenant_And_Purge/D├®p├┤t_Draft_(Brouillon_temporaire_72h)_et_cycle_de_purge (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/handler	0.162s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/handler	1.112s
 === RUN   TestIdempotencyStore_TenantIsolation
 --- PASS: TestIdempotencyStore_TenantIsolation (0.05s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/idempotency	0.135s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/idempotency	(cached)
 === RUN   TestValidateInvoice
 === RUN   TestValidateInvoice/Facture_valide_avec_calcul_de_totaux
 === RUN   TestValidateInvoice/Num├â┬®ro_de_facture_manquant
@@ -208,11 +210,11 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status	(cached)
 === RUN   TestLogSanitizer_MasksSecrets
 --- PASS: TestLogSanitizer_MasksSecrets (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/middleware	1.222s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/middleware	(cached)
 === RUN   TestMetricsAndTraceMiddleware
 --- PASS: TestMetricsAndTraceMiddleware (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/observability	0.057s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/observability	(cached)
 === RUN   TestParse_EDIFACT
 === RUN   TestParse_EDIFACT/Message_EDIFACT_valide_avec_BGM_et_DTM
 === RUN   TestParse_EDIFACT/Message_sans_num├®ro_BGM_utilise_le_fallback_UNKNOWN
@@ -284,16 +286,27 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/routing/directory	(cached)
 --- PASS: TestDispatcher_RouteAndDispatch (0.00s)
 PASS
 ok  	github.com/adlanegrm-oss/einvoice-saas/internal/routing/dispatcher	(cached)
+=== RUN   TestSecurity_MultiTenantDataIsolation
+--- PASS: TestSecurity_MultiTenantDataIsolation (0.00s)
+=== RUN   TestSecurity_XXEAndXMLBombRejection
+--- PASS: TestSecurity_XXEAndXMLBombRejection (0.00s)
+=== RUN   TestSecurity_PathTraversalRejection
+--- PASS: TestSecurity_PathTraversalRejection (0.00s)
+PASS
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/security	0.043s
 === RUN   TestMultiTenantEmissionPipeline
---- PASS: TestMultiTenantEmissionPipeline (0.05s)
+--- PASS: TestMultiTenantEmissionPipeline (0.06s)
 === RUN   TestCrossBorder_FatturaPA_To_KSeF
 --- PASS: TestCrossBorder_FatturaPA_To_KSeF (0.00s)
 === RUN   TestPipeline_ConformeEtAcheminee
 --- PASS: TestPipeline_ConformeEtAcheminee (0.00s)
 === RUN   TestPipeline_RejetReglementaire
 --- PASS: TestPipeline_RejetReglementaire (0.00s)
+=== RUN   TestEndToEndPipeline_Validation_Seal_Outbox_Worker_Evidence
+    e2e_pipeline_test.go:127: Succes : Sc├®nario E2E valid├® avec 2 ├®v├®nements scell├®s
+--- PASS: TestEndToEndPipeline_Validation_Seal_Outbox_Worker_Evidence (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/service	0.103s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/service	1.107s
 ?   	github.com/adlanegrm-oss/einvoice-saas/internal/tenant	[no test files]
 === RUN   TestEmptyAndUnknown
 --- PASS: TestEmptyAndUnknown (0.00s)
@@ -320,14 +333,14 @@ ok  	github.com/adlanegrm-oss/einvoice-saas/internal/validator	(cached)
 === RUN   TestSubmitAfterStopDoesNotPanic
 --- PASS: TestSubmitAfterStopDoesNotPanic (0.00s)
 === RUN   TestPanickingJobDoesNotKillWorker
-2026/10/03 20:05:04 [Worker 1] panique dans un job : boom
---- PASS: TestPanickingJobDoesNotKillWorker (0.05s)
+2026/10/03 20:18:23 [Worker 1] panique dans un job : boom
+--- PASS: TestPanickingJobDoesNotKillWorker (0.04s)
 === RUN   TestFullQueueRejects
-2026/10/03 20:05:04 [Worker Pool] File d'attente pleine, t├óche rejet├®e.
+2026/10/03 20:18:23 [Worker Pool] File d'attente pleine, t├óche rejet├®e.
 --- PASS: TestFullQueueRejects (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/internal/worker	0.088s
+ok  	github.com/adlanegrm-oss/einvoice-saas/internal/worker	0.078s
 === RUN   TestE2E_FullPipeline_Sprint3
 --- PASS: TestE2E_FullPipeline_Sprint3 (0.00s)
 PASS
-ok  	github.com/adlanegrm-oss/einvoice-saas/test	0.042s
+ok  	github.com/adlanegrm-oss/einvoice-saas/test	1.047s
