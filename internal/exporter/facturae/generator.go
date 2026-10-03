@@ -1,4 +1,4 @@
-package facturae
+﻿package facturae
 
 import (
 "bytes"
@@ -28,7 +28,7 @@ buf.WriteString("      </InvoiceTotals>\n      <Items>\n")
 for _, it := range inv.Items {
 buf.WriteString("        <InvoiceLine>\n")
 buf.WriteString(fmt.Sprintf("          <ItemDescription>%s</ItemDescription>\n", it.Description))
-buf.WriteString(fmt.Sprintf("          <Quantity>%d</Quantity>\n", it.Quantity))
+buf.WriteString(fmt.Sprintf("          <Quantity>%.2f</Quantity>\n", it.Quantity))
 buf.WriteString(fmt.Sprintf("          <UnitPriceWithoutTax>%.2f</UnitPriceWithoutTax>\n", it.UnitPrice.ToFloat()))
 buf.WriteString("          <TaxesOutputs><Tax><TaxTypeCode>01</TaxTypeCode>\n")
 buf.WriteString(fmt.Sprintf("            <TaxRate>%.2f</TaxRate>\n", it.VATRate.ToFloat()))

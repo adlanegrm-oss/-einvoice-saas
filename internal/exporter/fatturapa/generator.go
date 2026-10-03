@@ -1,4 +1,4 @@
-package fatturapa
+﻿package fatturapa
 
 import (
 "bytes"
@@ -58,9 +58,9 @@ for idx, item := range inv.Items {
 buf.WriteString("      <DettaglioLinee>\n")
 buf.WriteString(fmt.Sprintf("        <NumeroLinea>%d</NumeroLinea>\n", idx+1))
 buf.WriteString(fmt.Sprintf("        <Descrizione>%s</Descrizione>\n", escape(item.Description)))
-buf.WriteString(fmt.Sprintf("        <Quantita>%d</Quantita>\n", item.Quantity))
+buf.WriteString(fmt.Sprintf("        <Quantita>%d</Quantita>\n", int(item.Quantity)))
 buf.WriteString(fmt.Sprintf("        <PrezzoUnitario>%.2f</PrezzoUnitario>\n", item.UnitPrice.ToFloat()))
-lineTot := float64(item.Quantity) * item.UnitPrice.ToFloat()
+lineTot := float64(int(item.Quantity)) * item.UnitPrice.ToFloat()
 buf.WriteString(fmt.Sprintf("        <PrezzoTotale>%.2f</PrezzoTotale>\n", lineTot))
 buf.WriteString(fmt.Sprintf("        <AliquotaIVA>%.2f</AliquotaIVA>\n", item.VATRate.ToFloat()))
 buf.WriteString("      </DettaglioLinee>\n")

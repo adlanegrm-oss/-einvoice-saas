@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -172,39 +172,39 @@ func TestAPIRequiresAuthentication(t *testing.T) {
 	}
 	for _, r := range routes {
 		if code, _ := e.do(t, r[0], r[1], "", "", nil); code != 401 {
-			t.Errorf("%s %s sans jeton : attendu 401, reçu %d", r[0], r[1], code)
+			t.Errorf("%s %s sans jeton : attendu 401, reÃ§u %d", r[0], r[1], code)
 		}
 	}
 
-	// Ancienne faille : l'en-tête X-User-Role fourni par le client donnait l'accès.
+	// Ancienne faille : l'en-tÃªte X-User-Role fourni par le client donnait l'accÃ¨s.
 	req, _ := http.NewRequest("GET", e.srv.URL+"/api/v1/invoices/list", nil)
 	req.Header.Set("X-User-Role", "EXPLOITATION")
 	req.Header.Set("Authorization", "ADMIN")
 	resp, _ := http.DefaultClient.Do(req)
 	resp.Body.Close()
 	if resp.StatusCode != 401 {
-		t.Errorf("en-têtes de rôle forgés : attendu 401, reçu %d", resp.StatusCode)
+		t.Errorf("en-tÃªtes de rÃ´le forgÃ©s : attendu 401, reÃ§u %d", resp.StatusCode)
 	}
 
-	// route d'administration refusée à un client
+	// route d'administration refusÃ©e Ã  un client
 	client := e.login(t, clientEmail, clientPass)
 	if code, _ := e.do(t, "POST", "/api/v1/jobs/daily-report", client, "", nil); code != 403 {
-		t.Errorf("route admin avec jeton client : attendu 403, reçu %d", code)
+		t.Errorf("route admin avec jeton client : attendu 403, reÃ§u %d", code)
 	}
 	admin := e.login(t, adminEmail, adminPass)
 	if code, _ := e.do(t, "POST", "/api/v1/jobs/daily-report", admin, "", nil); code != 202 {
-		t.Errorf("route admin avec jeton admin : attendu 202, reçu %d", code)
+		t.Errorf("route admin avec jeton admin : attendu 202, reÃ§u %d", code)
 	}
 }
 
 func TestLogin(t *testing.T) {
 	e := newEnv(t)
 	if code, _ := e.postJSON(t, "/api/v1/auth/login", "", map[string]string{"email": adminEmail, "password": "faux"}); code != 401 {
-		t.Errorf("mauvais mot de passe : attendu 401, reçu %d", code)
+		t.Errorf("mauvais mot de passe : attendu 401, reÃ§u %d", code)
 	}
-	// les anciens identifiants codés en dur ne doivent plus fonctionner
+	// les anciens identifiants codÃ©s en dur ne doivent plus fonctionner
 	if code, _ := e.postJSON(t, "/api/v1/auth/login", "", map[string]string{"email": "admin.super@einvoice.int", "password": "hadahowana"}); code != 401 {
-		t.Errorf("ancien identifiant : attendu 401, reçu %d", code)
+		t.Errorf("ancien identifiant : attendu 401, reÃ§u %d", code)
 	}
 	tok := e.login(t, clientEmail, clientPass)
 	code, body := e.do(t, "GET", "/api/v1/auth/me", tok, "", nil)
@@ -226,37 +226,37 @@ func TestPasswordResetFlow(t *testing.T) {
 	}
 	u, err := url.Parse(link)
 	if err != nil || u.Query().Get("token") == "" {
-		t.Fatalf("lien de réinitialisation invalide : %q", link)
+		t.Fatalf("lien de rÃ©initialisation invalide : %q", link)
 	}
 	token := u.Query().Get("token")
 	if strings.Contains(string(known), token) {
-		t.Fatal("FAILLE : le jeton est renvoyé dans la réponse HTTP")
+		t.Fatal("FAILLE : le jeton est renvoyÃ© dans la rÃ©ponse HTTP")
 	}
 
-	// un compte inconnu reçoit exactement la même réponse (pas d'énumération)
+	// un compte inconnu reÃ§oit exactement la mÃªme rÃ©ponse (pas d'Ã©numÃ©ration)
 	_, unknown := e.postJSON(t, "/api/v1/auth/forgot-password", "", map[string]string{"email": "inconnu@example.com"})
 	if string(known) != string(unknown) {
-		t.Errorf("réponses différentes selon l'existence du compte :\n%s\n%s", known, unknown)
+		t.Errorf("rÃ©ponses diffÃ©rentes selon l'existence du compte :\n%s\n%s", known, unknown)
 	}
 
-	// mot de passe faible refusé, puis réinitialisation valide
+	// mot de passe faible refusÃ©, puis rÃ©initialisation valide
 	if code, _ := e.postJSON(t, "/api/v1/auth/reset-password", "", map[string]string{"token": token, "password": "court"}); code != 400 {
-		t.Errorf("mot de passe faible : attendu 400, reçu %d", code)
+		t.Errorf("mot de passe faible : attendu 400, reÃ§u %d", code)
 	}
 	if code, _ := e.postJSON(t, "/api/v1/auth/reset-password", "", map[string]string{"token": token, "password": "nouveau-mot-de-passe"}); code != 200 {
-		t.Fatalf("réinitialisation valide : %d", code)
+		t.Fatalf("rÃ©initialisation valide : %d", code)
 	}
 	e.login(t, clientEmail, "nouveau-mot-de-passe")
 	if code, _ := e.postJSON(t, "/api/v1/auth/login", "", map[string]string{"email": clientEmail, "password": clientPass}); code != 401 {
 		t.Error("l'ancien mot de passe fonctionne encore")
 	}
-	// jeton à usage unique
+	// jeton Ã  usage unique
 	if code, _ := e.postJSON(t, "/api/v1/auth/reset-password", "", map[string]string{"token": token, "password": "encore-un-autre-mdp"}); code != 400 {
-		t.Errorf("réutilisation du jeton : attendu 400, reçu %d", code)
+		t.Errorf("rÃ©utilisation du jeton : attendu 400, reÃ§u %d", code)
 	}
-	// impossible de créer un compte via un faux jeton
+	// impossible de crÃ©er un compte via un faux jeton
 	if code, _ := e.postJSON(t, "/api/v1/auth/reset-password", "", map[string]string{"token": "n-importe-quoi", "password": "mot-de-passe-ok-123"}); code != 400 {
-		t.Errorf("faux jeton : attendu 400, reçu %d", code)
+		t.Errorf("faux jeton : attendu 400, reÃ§u %d", code)
 	}
 }
 
@@ -266,11 +266,11 @@ func TestDepositListDownloadIsolation(t *testing.T) {
 	c2 := e.login(t, client2Email, client2Pass)
 	admin := e.login(t, adminEmail, adminPass)
 
-	// dépôt valide
+	// dÃ©pÃ´t valide
 	ct, body := multipartBody(t, "ready", map[string]string{"facture.xml": validUBL})
 	code, resp := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body)
 	if code != 200 {
-		t.Fatalf("dépôt valide : %d %s", code, resp)
+		t.Fatalf("dÃ©pÃ´t valide : %d %s", code, resp)
 	}
 	var dep struct {
 		Results []struct {
@@ -280,24 +280,24 @@ func TestDepositListDownloadIsolation(t *testing.T) {
 	}
 	json.Unmarshal(resp, &dep)
 	if len(dep.Results) != 1 || dep.Results[0].StoredAs == "" || len(dep.Results[0].SHA256) != 64 {
-		t.Fatalf("résultat de dépôt inattendu : %s", resp)
+		t.Fatalf("rÃ©sultat de dÃ©pÃ´t inattendu : %s", resp)
 	}
 	stored := dep.Results[0].StoredAs
 
-	// XML invalide en mode "ready" : rejeté et non archivé
+	// XML invalide en mode "ready" : rejetÃ© et non archivÃ©
 	ct, body = multipartBody(t, "ready", map[string]string{"casse.xml": "<Invoice><a></Invoice>"})
 	if code, _ := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body); code != 422 {
-		t.Errorf("XML invalide : attendu 422, reçu %d", code)
+		t.Errorf("XML invalide : attendu 422, reÃ§u %d", code)
 	}
 	// extension interdite
 	ct, body = multipartBody(t, "ready", map[string]string{"shell.html": "<script>alert(1)</script>"})
 	if code, _ := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body); code != 422 {
-		t.Errorf("extension interdite : attendu 422, reçu %d", code)
+		t.Errorf("extension interdite : attendu 422, reÃ§u %d", code)
 	}
-	// le même XML invalide est accepté en brouillon
+	// le mÃªme XML invalide est acceptÃ© en brouillon
 	ct, body = multipartBody(t, "draft", map[string]string{"brouillon.xml": "<Invoice><a></Invoice>"})
 	if code, _ := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body); code != 200 {
-		t.Errorf("brouillon : attendu 200, reçu %d", code)
+		t.Errorf("brouillon : attendu 200, reÃ§u %d", code)
 	}
 
 	// listes : c1 voit ses 2 documents, c2 rien, l'admin tout
@@ -308,39 +308,39 @@ func TestDepositListDownloadIsolation(t *testing.T) {
 		return len(list)
 	}
 	if n := count(c1); n != 2 {
-		t.Errorf("client 1 : 2 documents attendus, %d reçus", n)
+		t.Errorf("client 1 : 2 documents attendus, %d reÃ§us", n)
 	}
 	if n := count(c2); n != 0 {
-		t.Errorf("client 2 ne doit rien voir, %d reçus", n)
+		t.Errorf("client 2 ne doit rien voir, %d reÃ§us", n)
 	}
 	if n := count(admin); n != 2 {
-		t.Errorf("admin : 2 documents attendus, %d reçus", n)
+		t.Errorf("admin : 2 documents attendus, %d reÃ§us", n)
 	}
 
-	// téléchargement : propriétaire OK, autre client refusé, y compris avec ?tenant=
+	// tÃ©lÃ©chargement : propriÃ©taire OK, autre client refusÃ©, y compris avec ?tenant=
 	dl := "/api/v1/invoices/download?folder=factures&file=" + url.QueryEscape(stored)
 	code, data := e.do(t, "GET", dl, c1, "", nil)
 	if code != 200 || string(data) != validUBL {
-		t.Errorf("téléchargement par le propriétaire : %d", code)
+		t.Errorf("tÃ©lÃ©chargement par le propriÃ©taire : %d", code)
 	}
 	if code, _ := e.do(t, "GET", dl, c2, "", nil); code != 404 {
-		t.Errorf("téléchargement par un autre client : attendu 404, reçu %d", code)
+		t.Errorf("tÃ©lÃ©chargement par un autre client : attendu 404, reÃ§u %d", code)
 	}
 	entries, _ := os.ReadDir(e.archives)
 	for _, d := range entries {
 		if code, _ := e.do(t, "GET", dl+"&tenant="+d.Name(), c2, "", nil); code != 404 {
-			t.Errorf("paramètre tenant exploité par un client : attendu 404, reçu %d", code)
+			t.Errorf("paramÃ¨tre tenant exploitÃ© par un client : attendu 404, reÃ§u %d", code)
 		}
 	}
 
-	// traversée de répertoire
+	// traversÃ©e de rÃ©pertoire
 	for _, bad := range []string{"../../etc/passwd", "..%2f..%2fetc%2fpasswd", "..", "a/b.pdf", `..\..\x`} {
 		if code, _ := e.do(t, "GET", "/api/v1/invoices/download?folder=factures&file="+url.QueryEscape(bad), c1, "", nil); code == 200 {
-			t.Errorf("traversée acceptée pour %q", bad)
+			t.Errorf("traversÃ©e acceptÃ©e pour %q", bad)
 		}
 	}
 	if code, _ := e.do(t, "GET", "/api/v1/invoices/download?folder=../x&file="+url.QueryEscape(stored), c1, "", nil); code != 400 {
-		t.Errorf("dossier invalide : attendu 400, reçu %d", code)
+		t.Errorf("dossier invalide : attendu 400, reÃ§u %d", code)
 	}
 }
 
@@ -350,12 +350,12 @@ func TestStructuredInvoices(t *testing.T) {
 	c2 := e.login(t, client2Email, client2Pass)
 
 	inv := map[string]any{
-		"id": "choisi-par-le-client", "number": "FAC-2026-001", "customer": "ACME",
+		"id": "choisi-par-le-client", "number": "FAC-2026-001", "issue_date": "2026-10-03T10:00:00Z", "customer": map[string]any{"name": "ACME"},
 		"items": []map[string]any{{"description": "Prestation", "quantity": 2, "unit_price": 100.0, "vat_rate": 20.0}},
 	}
 	code, body := e.postJSON(t, "/api/v1/invoices", c1, inv)
 	if code != 201 {
-		t.Fatalf("création : %d %s", code, body)
+		t.Fatalf("crÃ©ation : %d %s", code, body)
 	}
 	var created struct {
 		Invoice struct {
@@ -365,17 +365,17 @@ func TestStructuredInvoices(t *testing.T) {
 	}
 	json.Unmarshal(body, &created)
 	if created.Invoice.ID == "choisi-par-le-client" || created.Invoice.ID == "" {
-		t.Errorf("l'identifiant doit être attribué par le serveur : %q", created.Invoice.ID)
+		t.Errorf("l'identifiant doit Ãªtre attribuÃ© par le serveur : %q", created.Invoice.ID)
 	}
 	if created.Invoice.TotalTTC != 240 {
-		t.Errorf("TTC attendu 240, reçu %v", created.Invoice.TotalTTC)
+		t.Errorf("TTC attendu 240, reÃ§u %v", created.Invoice.TotalTTC)
 	}
 
 	if code, _ := e.postJSON(t, "/api/v1/invoices", c1, inv); code != 409 {
-		t.Errorf("numéro en double : attendu 409, reçu %d", code)
+		t.Errorf("numÃ©ro en double : attendu 409, reÃ§u %d", code)
 	}
 	if code, _ := e.postJSON(t, "/api/v1/invoices", c1, map[string]any{"number": "X", "customer": "Y", "items": []any{}}); code != 422 {
-		t.Errorf("facture sans ligne : attendu 422, reçu %d", code)
+		t.Errorf("facture sans ligne : attendu 422, reÃ§u %d", code)
 	}
 
 	list := func(token string) int {
@@ -385,19 +385,19 @@ func TestStructuredInvoices(t *testing.T) {
 		return len(l)
 	}
 	if list(c1) != 1 || list(c2) != 0 {
-		t.Error("l'isolation des factures entre clients est brisée")
+		t.Error("l'isolation des factures entre clients est brisÃ©e")
 	}
 
 	exp := "/api/v1/invoices/export?id=" + url.QueryEscape(created.Invoice.ID)
 	if code, b := e.do(t, "GET", exp, c1, "", nil); code != 200 || !strings.Contains(string(b), "CrossIndustryInvoice") {
-		t.Errorf("export par le propriétaire : %d", code)
+		t.Errorf("export par le propriÃ©taire : %d", code)
 	}
 	if code, _ := e.do(t, "GET", exp, c2, "", nil); code != 404 {
-		t.Errorf("export par un autre client : attendu 404, reçu %d", code)
+		t.Errorf("export par un autre client : attendu 404, reÃ§u %d", code)
 	}
 
 	if code, _ := e.do(t, "GET", "/api/v1/reports/daily?date=pas-une-date", c1, "", nil); code != 400 {
-		t.Errorf("date invalide : attendu 400, reçu %d", code)
+		t.Errorf("date invalide : attendu 400, reÃ§u %d", code)
 	}
 	today := time.Now().UTC().Format("2006-01-02")
 	code, b := e.do(t, "GET", "/api/v1/reports/daily?date="+today, c1, "", nil)
@@ -415,11 +415,11 @@ func TestPurgeExpiredDrafts(t *testing.T) {
 	c1 := e.login(t, clientEmail, clientPass)
 	ct, body := multipartBody(t, "draft", map[string]string{"vieux.xml": "<a/>"})
 	if code, _ := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body); code != 200 {
-		t.Fatalf("dépôt du brouillon : %d", code)
+		t.Fatalf("dÃ©pÃ´t du brouillon : %d", code)
 	}
 	ct, body = multipartBody(t, "draft", map[string]string{"recent.xml": "<a/>"})
 	if code, _ := e.do(t, "POST", "/api/v1/invoices/deposit", c1, ct, body); code != 200 {
-		t.Fatalf("dépôt du brouillon récent : %d", code)
+		t.Fatalf("dÃ©pÃ´t du brouillon rÃ©cent : %d", code)
 	}
 
 	find := func(suffix string) string {
@@ -442,12 +442,12 @@ func TestPurgeExpiredDrafts(t *testing.T) {
 	}
 
 	if n := e.app.archive.PurgeExpiredDrafts(time.Now(), handler.DraftTTL); n != 1 {
-		t.Errorf("1 brouillon expiré attendu, %d supprimé(s)", n)
+		t.Errorf("1 brouillon expirÃ© attendu, %d supprimÃ©(s)", n)
 	}
 	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
-		t.Error("le brouillon de plus de 72 h doit être supprimé")
+		t.Error("le brouillon de plus de 72 h doit Ãªtre supprimÃ©")
 	}
 	if _, err := os.Stat(newPath); err != nil {
-		t.Error("le brouillon récent doit être conservé")
+		t.Error("le brouillon rÃ©cent doit Ãªtre conservÃ©")
 	}
 }

@@ -1,4 +1,4 @@
-package exporter
+﻿package exporter
 
 import (
 	"encoding/xml"
@@ -8,7 +8,7 @@ import (
 	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 )
 
-// CrossIndustryInvoice modélise la structure XML Factur-X / CII
+// CrossIndustryInvoice modÃ©lise la structure XML Factur-X / CII
 type CrossIndustryInvoice struct {
 	XMLName  xml.Name `xml:"rsm:CrossIndustryInvoice"`
 	XmlnsRSM string   `xml:"xmlns:rsm,attr"`
@@ -48,7 +48,7 @@ type CrossIndustryInvoice struct {
 	} `xml:"rsm:SupplyChainTradeTransaction"`
 }
 
-// GenerateFacturXXML génère un document XML conforme au profil Factur-X MINIMUM/BASIC
+// GenerateFacturXXML gÃ©nÃ¨re un document XML conforme au profil Factur-X MINIMUM/BASIC
 func GenerateFacturXXML(inv invoice.Invoice) ([]byte, error) {
 	cii := CrossIndustryInvoice{
 		XmlnsRSM: "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100",
@@ -68,9 +68,9 @@ func GenerateFacturXXML(inv invoice.Invoice) ([]byte, error) {
 	cii.ExchangedDocument.IssueDateTime.DateTimeString.Value = issueDate.Format("20060102")
 
 	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.BuyerTradeParty.Name = inv.Customer.Name
-	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxBasisTotalAmount = fmt.Sprintf("%.2f", inv.TotalHT)
-	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxTotalAmount = fmt.Sprintf("%.2f", inv.TotalVAT)
-	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.GrandTotalAmount = fmt.Sprintf("%.2f", inv.TotalTTC)
+	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxBasisTotalAmount = fmt.Sprintf("%.2f", inv.TotalHT.ToFloat())
+	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxTotalAmount = fmt.Sprintf("%.2f", inv.TotalVAT.ToFloat())
+	cii.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation.GrandTotalAmount = fmt.Sprintf("%.2f", inv.TotalTTC.ToFloat())
 
 	output, err := xml.MarshalIndent(cii, "", "  ")
 	if err != nil {

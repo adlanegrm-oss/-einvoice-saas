@@ -1,4 +1,4 @@
-package ksef
+﻿package ksef
 
 import (
 "bytes"
@@ -36,7 +36,7 @@ for idx, it := range inv.Items {
 buf.WriteString("    <FaWiersz>\n")
 buf.WriteString(fmt.Sprintf("      <NrWierszaFa>%d</NrWierszaFa>\n", idx+1))
 buf.WriteString(fmt.Sprintf("      <P_7>%s</P_7>\n", it.Description))
-buf.WriteString(fmt.Sprintf("      <P_8B>%d</P_8B>\n", it.Quantity))
+buf.WriteString(fmt.Sprintf("      <P_8B>%d</P_8B>\n", int(it.Quantity)))
 buf.WriteString(fmt.Sprintf("      <P_9A>%.2f</P_9A>\n", it.UnitPrice.ToFloat()))
 buf.WriteString(fmt.Sprintf("      <P_12>%.0f</P_12>\n", it.VATRate.ToFloat()))
 buf.WriteString("    </FaWiersz>\n")
