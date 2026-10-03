@@ -59,9 +59,9 @@ func (m *Manager) AcquireLock(ctx context.Context, orgID, key, reqHash string, t
 
 	query := `SELECT request_hash, status, response_code, response_body, locked_until 
 	          FROM idempotency_keys WHERE organization_id = ? AND idempotency_key = ?`
-	
+
 	err = tx.QueryRowContext(ctx, query, orgID, key).Scan(&existingHash, &status, &code, &body, &lockedUntil)
-	
+
 	if errors.Is(err, sql.ErrNoRows) {
 		insertQuery := `INSERT INTO idempotency_keys (organization_id, idempotency_key, request_hash, status, locked_until)
 		                VALUES (?, ?, ?, 'PROCESSING', ?)`

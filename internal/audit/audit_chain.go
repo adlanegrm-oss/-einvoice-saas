@@ -67,7 +67,7 @@ func AppendEvent(ctx context.Context, tx *sql.Tx, ev *StatusEvent) error {
 	queryLast := `SELECT event_hash FROM invoice_status_events 
 	              WHERE invoice_id = ? ORDER BY created_at DESC LIMIT 1`
 	err := tx.QueryRowContext(ctx, queryLast, ev.InvoiceID).Scan(&lastHash)
-	
+
 	if errors.Is(err, sql.ErrNoRows) || !lastHash.Valid {
 		ev.PrevEventHash = "GENESIS"
 	} else if err != nil {
@@ -109,20 +109,20 @@ func VerifyAuditTrail(ctx context.Context, db *sql.DB, invoiceID string) (bool, 
 
 	for rows.Next() {
 		var ev StatusEvent
-		if err := rows.Scan(&ev.ID, &ev.OrganizationID, &ev.InvoiceID, &ev.FromState, 
-			&ev.ToState, &ev.Actor, &ev.Reason, &ev.PayloadHash, 
+		if err := rows.Scan(&ev.ID, &ev.OrganizationID, &ev.InvoiceID, &ev.FromState,
+			&ev.ToState, &ev.Actor, &ev.Reason, &ev.PayloadHash,
 			&ev.PrevEventHash, &ev.EventHash, &ev.CreatedAt); err != nil {
 			return false, err
 		}
 
 		if ev.PrevEventHash != expectedPrevHash {
-			return false, fmt.Errorf("rupture de chaine sur l'evenement %s: attendu=%s, trouve=%s", 
+			return false, fmt.Errorf("rupture de chaine sur l'evenement %s: attendu=%s, trouve=%s",
 				ev.ID, expectedPrevHash, ev.PrevEventHash)
 		}
 
 		computed := ComputeEventHash(ev)
 		if computed != ev.EventHash {
-			return false, fmt.Errorf("alteration cryptographique sur l'evenement %s: calcule=%s, stocke=%s", 
+			return false, fmt.Errorf("alteration cryptographique sur l'evenement %s: calcule=%s, stocke=%s",
 				ev.ID, computed, ev.EventHash)
 		}
 

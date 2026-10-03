@@ -1,12 +1,12 @@
-﻿package repository
+package repository
 
 import (
-	"github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status"
 	"strings"
 	"time"
 
@@ -210,16 +210,14 @@ func (r *SQLiteInvoiceRepository) DailyReportFor(owner, dateStr string) (*DailyR
 	return report, nil
 }
 
-
-
 // StatusHistoryEntry enrichi avec les attributs de scellement / signature
 type StatusHistoryEntry struct {
-	InvoiceID string               `json:"invoice_id"`
-	FromState string               `json:"from_state"`
-	ToState   status.InvoiceState  `json:"to_state"`
-	Reason    string               `json:"reason,omitempty"`
-	Signature string               `json:"signature,omitempty"`
-	CreatedAt time.Time            `json:"created_at"`
+	InvoiceID string              `json:"invoice_id"`
+	FromState string              `json:"from_state"`
+	ToState   status.InvoiceState `json:"to_state"`
+	Reason    string              `json:"reason,omitempty"`
+	Signature string              `json:"signature,omitempty"`
+	CreatedAt time.Time           `json:"created_at"`
 }
 
 // RecordStatusTransition conforme Ã  l'appel de pipeline.go :

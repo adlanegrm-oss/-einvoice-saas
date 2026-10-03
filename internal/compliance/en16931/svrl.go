@@ -8,10 +8,10 @@ import (
 
 // SVRLReport modélise la racine d'un rapport de validation Schematron (ISO SVRL)
 type SVRLReport struct {
-	XMLName         xml.Name         `xml:"schematron-output"`
-	Title           string           `xml:"title,attr"`
-	FiredRules      []SVRLFiredRule  `xml:"fired-rule"`
-	FailedAsserts   []SVRLAssert     `xml:"failed-assert"`
+	XMLName           xml.Name         `xml:"schematron-output"`
+	Title             string           `xml:"title,attr"`
+	FiredRules        []SVRLFiredRule  `xml:"fired-rule"`
+	FailedAsserts     []SVRLAssert     `xml:"failed-assert"`
 	SuccessfulReports []SVRLReportItem `xml:"successful-report"`
 }
 

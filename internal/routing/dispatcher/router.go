@@ -9,7 +9,7 @@ import (
 
 // TargetEndpoint détaille les coordonnées techniques de la PDP ou du point de livraison
 type TargetEndpoint struct {
-	ReceiverID  string // ex: "0002:12345678900014" (ISO6523:SIRET)
+	ReceiverID   string // ex: "0002:12345678900014" (ISO6523:SIRET)
 	PlatformName string // ex: "Chorus Pro", "PDP_X", "Peppol_AP_Y"
 	AS4Endpoint  string // URL d'ingestion sécurisée AS4
 	Certificate  []byte // Certificat X.509 pour chiffrement de l'enveloppe

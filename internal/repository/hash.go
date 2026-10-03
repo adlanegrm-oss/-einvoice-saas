@@ -17,7 +17,7 @@ func GenerateInvoiceHash(inv Invoice) (string, error) {
 
 	// Calcul du hash SHA-256
 	hashBytes := sha256.Sum256(data)
-	
+
 	// Conversion en chaîne hexadécimale lisible
 	return hex.EncodeToString(hashBytes[:]), nil
 }

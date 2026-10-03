@@ -12,7 +12,7 @@ import (
 var ErrNotConfigured = errors.New("clearance : aucun connecteur PDP/PPF configuré")
 
 type ClearanceResponse struct {
-	UPODocument []byte `json:"upo_document,omitempty"`
+	UPODocument []byte    `json:"upo_document,omitempty"`
 	ClearanceID string    `json:"clearance_id"`
 	Status      string    `json:"status"` // CLEARED ou REJECTED
 	QRCodeData  string    `json:"qr_code_data,omitempty"`
@@ -45,7 +45,6 @@ func (MockService) SubmitInvoice(ctx context.Context, invoiceID string, payload 
 		ClearedAt:   time.Now(),
 	}, nil
 }
-
 
 var (
 	ErrSubmissionFailed = errors.New("clearance: echec de transmission")

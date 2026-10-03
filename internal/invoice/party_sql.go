@@ -1,4 +1,4 @@
-﻿package invoice
+package invoice
 
 import (
 	"database/sql/driver"

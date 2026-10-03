@@ -1,9 +1,9 @@
-﻿package invoice
+package invoice
 
 import (
-	"time"
-		"strings"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateInvoice(t *testing.T) {
@@ -15,10 +15,10 @@ func TestValidateInvoice(t *testing.T) {
 		{
 			name: "Facture valide avec calcul de totaux",
 			invoice: Invoice{
-				ID:       "1",
-				Number:   "INV-001",
-				Customer: Party{Name: "Client A"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+				ID:        "1",
+				Number:    "INV-001",
+				Customer:  Party{Name: "Client A"},
+				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 				Items: []InvoiceItem{
 					{Description: "DÃ©veloppement Go", Quantity: 2, UnitPrice: NewMoneyFromFloat(100.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
 				},
@@ -28,8 +28,8 @@ func TestValidateInvoice(t *testing.T) {
 		{
 			name: "NumÃ©ro de facture manquant",
 			invoice: Invoice{
-				Customer: Party{Name: "Client B"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+				Customer:  Party{Name: "Client B"},
+				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 				Items: []InvoiceItem{
 					{Description: "Service", Quantity: 1, UnitPrice: NewMoneyFromFloat(50.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
 				},
@@ -39,19 +39,19 @@ func TestValidateInvoice(t *testing.T) {
 		{
 			name: "Aucun article dans la facture",
 			invoice: Invoice{
-				Number:   "INV-002",
-				Customer: Party{Name: "Client C"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
-				Items:    []InvoiceItem{},
+				Number:    "INV-002",
+				Customer:  Party{Name: "Client C"},
+				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+				Items:     []InvoiceItem{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "QuantitÃ© invalide (<= 0)",
 			invoice: Invoice{
-				Number:   "INV-003",
-				Customer: Party{Name: "Client D"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+				Number:    "INV-003",
+				Customer:  Party{Name: "Client D"},
+				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 				Items: []InvoiceItem{
 					{Description: "Service", Quantity: 0, UnitPrice: NewMoneyFromFloat(50.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
 				},
@@ -72,9 +72,9 @@ func TestValidateInvoice(t *testing.T) {
 
 func TestCalculateTotals(t *testing.T) {
 	inv := Invoice{
-		Number:   "INV-TVA",
-		Customer: Party{Name: "Test TVA"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+		Number:    "INV-TVA",
+		Customer:  Party{Name: "Test TVA"},
+		IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 		Items: []InvoiceItem{
 			{Description: "Produit A", Quantity: 2, UnitPrice: NewMoneyFromFloat(100.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)}, // HT: 200, TVA: 40
 			{Description: "Produit B", Quantity: 1, UnitPrice: NewMoneyFromFloat(100.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(10.0, 2, CurrencyEUR)}, // HT: 100, TVA: 10
@@ -99,9 +99,9 @@ func TestCalculateTotals(t *testing.T) {
 
 func TestCalculateTotalsRounding(t *testing.T) {
 	inv := Invoice{
-		Number:   "INV-ROUND",
-		Customer: Party{Name: "Client"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
+		Number:    "INV-ROUND",
+		Customer:  Party{Name: "Client"},
+		IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 		Items: []InvoiceItem{
 			{Description: "A", Quantity: 3, UnitPrice: NewMoneyFromFloat(0.1, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
 			{Description: "B", Quantity: 1, UnitPrice: NewMoneyFromFloat(0.2, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
@@ -118,16 +118,16 @@ func TestCalculateTotalsRounding(t *testing.T) {
 func TestValidateRejectsAbnormalValues(t *testing.T) {
 	base := func() Invoice {
 		return Invoice{Number: "N", Customer: Party{Name: "C"},
-							IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC), Items: []InvoiceItem{{Description: "x", Quantity: 1, UnitPrice: NewMoneyFromFloat(10, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20, 2, CurrencyEUR)}}}
+			IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC), Items: []InvoiceItem{{Description: "x", Quantity: 1, UnitPrice: NewMoneyFromFloat(10, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20, 2, CurrencyEUR)}}}
 	}
 	cases := map[string]func(*Invoice){
 		"TVA nÃ©gative":       func(i *Invoice) { i.Items[0].VATRate = NewMoney(-500, 2, CurrencyEUR) },
 		"TVA supÃ©rieure 100": func(i *Invoice) { i.Items[0].VATRate = NewMoney(25000, 2, CurrencyEUR) },
 		"prix nÃ©gatif":       func(i *Invoice) { i.Items[0].UnitPrice = NewMoney(-100, 2, CurrencyEUR) },
-// float NaN non applicable sur int64 Money
-// float Inf non applicable sur int64 Money
-		"numÃ©ro trop long":   func(i *Invoice) { i.Number = strings.Repeat("9", 65) },
-		"numÃ©ro d'espaces":   func(i *Invoice) { i.Number = "   " },
+		// float NaN non applicable sur int64 Money
+		// float Inf non applicable sur int64 Money
+		"numÃ©ro trop long": func(i *Invoice) { i.Number = strings.Repeat("9", 65) },
+		"numÃ©ro d'espaces": func(i *Invoice) { i.Number = "   " },
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {

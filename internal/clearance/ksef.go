@@ -37,7 +37,7 @@ func (k *KSeFConnector) SubmitInvoice(ctx context.Context, invoiceID string, pay
 	datePrefix := time.Now().UTC().Format("20060102")
 	hash := sha256.Sum256(payload)
 	shortHash := hex.EncodeToString(hash[:4])
-	
+
 	// Format réglementaire : NIP-YYYYMMDD-HEXID
 	ksefRef := fmt.Sprintf("%s-%s-%s", k.cfg.NIP, datePrefix, shortHash)
 

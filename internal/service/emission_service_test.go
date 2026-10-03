@@ -1,25 +1,25 @@
-﻿package service
+package service
 
 import (
-"context"
-"database/sql"
-"testing"
-"time"
+	"context"
+	"database/sql"
+	"testing"
+	"time"
 
-"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
-_ "modernc.org/sqlite"
+	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
+	_ "modernc.org/sqlite"
 )
 
 func setupTestEnvironment(t *testing.T) *sql.DB {
-t.Helper()
-db, err := sql.Open("sqlite", ":memory:")
-if err != nil {
-t.Fatalf("open sqlite: %v", err)
-}
-db.SetMaxOpenConns(1)
-t.Cleanup(func() { db.Close() })
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { db.Close() })
 
-ddl := `
+	ddl := `
 CREATE TABLE idempotency_keys (
 tenant_id TEXT NOT NULL,
 idempotency_key TEXT NOT NULL,
@@ -59,57 +59,57 @@ status TEXT NOT NULL,
 created_at TIMESTAMP NOT NULL
 );`
 
-if _, err := db.Exec(ddl); err != nil {
-t.Fatalf("ddl init: %v", err)
-}
-return db
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatalf("ddl init: %v", err)
+	}
+	return db
 }
 
 func TestMultiTenantEmissionPipeline(t *testing.T) {
-db := setupTestEnvironment(t)
-svc := NewMultiTenantEmissionService(db)
-ctx := context.Background()
+	db := setupTestEnvironment(t)
+	svc := NewMultiTenantEmissionService(db)
+	ctx := context.Background()
 
-makeInvoice := func(num string) *invoice.Invoice {
-return &invoice.Invoice{
-Number:    num,
-Customer:  invoice.Party{Name: "Client Test"},
-IssueDate: time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC),
-Items: []invoice.InvoiceItem{
-{
-Description: "Abonnement SaaS",
-Quantity:    1,
-UnitPrice:   invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
-VATRate:     invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR),
-},
-},
-}
-}
+	makeInvoice := func(num string) *invoice.Invoice {
+		return &invoice.Invoice{
+			Number:    num,
+			Customer:  invoice.Party{Name: "Client Test"},
+			IssueDate: time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC),
+			Items: []invoice.InvoiceItem{
+				{
+					Description: "Abonnement SaaS",
+					Quantity:    1,
+					UnitPrice:   invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
+					VATRate:     invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR),
+				},
+			},
+		}
+	}
 
-// Test 1: Émission normale
-invA := makeInvoice("FAC-2026-001")
-res1, err := svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-1", invA)
-if err != nil || res1.Status != "SUBMISSION_PENDING" || res1.Cached {
-t.Fatalf("emission 1 échouée: %v, res: %+v", err, res1)
-}
+	// Test 1: Émission normale
+	invA := makeInvoice("FAC-2026-001")
+	res1, err := svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-1", invA)
+	if err != nil || res1.Status != "SUBMISSION_PENDING" || res1.Cached {
+		t.Fatalf("emission 1 échouée: %v, res: %+v", err, res1)
+	}
 
-// Test 2: Même numéro sur un tenant différent (tenant-B) -> Doit réussir grâce au multi-tenant strict
-invB := makeInvoice("FAC-2026-001")
-res2, err := svc.EmitInvoiceTx(ctx, "tenant-B", "idemp-2", invB)
-if err != nil || res2.Status != "SUBMISSION_PENDING" {
-t.Fatalf("tenant-B doit pouvoir émettre son propre FAC-2026-001: %v", err)
-}
+	// Test 2: Même numéro sur un tenant différent (tenant-B) -> Doit réussir grâce au multi-tenant strict
+	invB := makeInvoice("FAC-2026-001")
+	res2, err := svc.EmitInvoiceTx(ctx, "tenant-B", "idemp-2", invB)
+	if err != nil || res2.Status != "SUBMISSION_PENDING" {
+		t.Fatalf("tenant-B doit pouvoir émettre son propre FAC-2026-001: %v", err)
+	}
 
-// Test 3: Doublon de numéro au sein du MÊME tenant (tenant-A) -> Rejet immédiat
-invA2 := makeInvoice("FAC-2026-001")
-_, err = svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-3", invA2)
-if err == nil {
-t.Fatalf("l'émission d'un numéro en doublon pour le même tenant doit échouer")
-}
+	// Test 3: Doublon de numéro au sein du MÊME tenant (tenant-A) -> Rejet immédiat
+	invA2 := makeInvoice("FAC-2026-001")
+	_, err = svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-3", invA2)
+	if err == nil {
+		t.Fatalf("l'émission d'un numéro en doublon pour le même tenant doit échouer")
+	}
 
-// Test 4: Rejeu idempotence (même tenant, même clé) -> Renvoie le résultat en cache sans réinsérer
-replayed, err := svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-1", invA)
-if err != nil || !replayed.Cached {
-t.Fatalf("le rejeu doit renvoyer le résultat mis en cache: err=%v, res=%+v", err, replayed)
-}
+	// Test 4: Rejeu idempotence (même tenant, même clé) -> Renvoie le résultat en cache sans réinsérer
+	replayed, err := svc.EmitInvoiceTx(ctx, "tenant-A", "idemp-1", invA)
+	if err != nil || !replayed.Cached {
+		t.Fatalf("le rejeu doit renvoyer le résultat mis en cache: err=%v, res=%+v", err, replayed)
+	}
 }

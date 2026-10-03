@@ -83,8 +83,8 @@ func (h *PipelineHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Méthode non autorisée"}`, http.StatusMethodNotAllowed)
 		return
 	}
-	
-// Découpage attendu : /api/v1/invoices/{id}/status
+
+	// Découpage attendu : /api/v1/invoices/{id}/status
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 5 || parts[4] != "status" {
 		http.Error(w, `{"error":"URL invalide"}`, http.StatusBadRequest)
@@ -92,22 +92,22 @@ func (h *PipelineHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	invoiceID := parts[3]
 
-var req StatusUpdateRequest
+	var req StatusUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"Corps JSON invalide"}`, http.StatusBadRequest)
 		return
 	}
 
-actor := r.Header.Get("X-User-Email")
+	actor := r.Header.Get("X-User-Email")
 	if actor == "" {
 		actor = "PDP_SYSTEM"
 	}
-if err := h.pipeline.TransitionInvoiceStatus(r.Context(), invoiceID, status.InvoiceState(req.Status), actor, req.Reason); err != nil {
+	if err := h.pipeline.TransitionInvoiceStatus(r.Context(), invoiceID, status.InvoiceState(req.Status), actor, req.Reason); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnprocessableEntity)
 		return
 	}
 
-w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"invoice_id": invoiceID,
@@ -122,7 +122,7 @@ func (h *PipelineHandler) GetAuditTrail(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-// Découpage attendu : /api/v1/invoices/{id}/audit-trail
+	// Découpage attendu : /api/v1/invoices/{id}/audit-trail
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 5 || parts[4] != "audit-trail" {
 		http.Error(w, `{"error":"URL invalide"}`, http.StatusBadRequest)
@@ -130,17 +130,17 @@ func (h *PipelineHandler) GetAuditTrail(w http.ResponseWriter, r *http.Request) 
 	}
 	invoiceID := parts[3]
 
-history, err := h.repo.GetStatusHistory(r.Context(), invoiceID)
+	history, err := h.repo.GetStatusHistory(r.Context(), invoiceID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"Erreur lecture audit trail : %s"}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-if len(history) == 0 {
+	if len(history) == 0 {
 		http.Error(w, `{"error":"Aucun historique trouvé pour cette facture"}`, http.StatusNotFound)
 		return
 	}
-w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(history)
 }

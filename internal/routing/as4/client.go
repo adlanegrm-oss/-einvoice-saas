@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ErrNRRRejected   = errors.New("recepisse AS4 NRR invalide ou refuse")
+	ErrNRRRejected  = errors.New("recepisse AS4 NRR invalide ou refuse")
 	ErrTransmission = errors.New("echec de transmission AS4 vers la passerelle cible")
 )
 

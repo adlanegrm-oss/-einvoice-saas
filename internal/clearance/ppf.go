@@ -17,9 +17,9 @@ type PPFConfig struct {
 }
 
 type PPFConnector struct {
-	cfg       PPFConfig
-	mu        sync.RWMutex
-	registry  map[string]*ClearanceResponse
+	cfg      PPFConfig
+	mu       sync.RWMutex
+	registry map[string]*ClearanceResponse
 }
 
 func NewPPFConnector(cfg PPFConfig) *PPFConnector {

@@ -1,4 +1,4 @@
-﻿package exporter
+package exporter
 
 import (
 	"encoding/xml"

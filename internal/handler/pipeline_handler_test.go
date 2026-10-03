@@ -81,7 +81,7 @@ func TestPipelineHandler_EmitInvoice_SuccessAndAudit(t *testing.T) {
 		Items: []invoice.InvoiceItem{
 			{Description: "Service Cloud", Quantity: 1, UnitPrice: invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR), VATRate: invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR)},
 		},
-		TotalHT: invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
+		TotalHT:  invoice.NewMoneyFromFloat(100.0, 2, invoice.CurrencyEUR),
 		TotalVAT: invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR),
 		TotalTTC: invoice.NewMoneyFromFloat(120.0, 2, invoice.CurrencyEUR),
 	}
@@ -136,7 +136,7 @@ func TestPipelineHandler_EmitInvoice_ValidationError(t *testing.T) {
 		Items: []invoice.InvoiceItem{
 			{Description: "Service Cloud", Quantity: 1, UnitPrice: invoice.NewMoneyFromFloat(50.0, 2, invoice.CurrencyEUR), VATRate: invoice.NewMoneyFromFloat(20.0, 2, invoice.CurrencyEUR)},
 		},
-		TotalHT: invoice.NewMoneyFromFloat(50.0, 2, invoice.CurrencyEUR),
+		TotalHT:  invoice.NewMoneyFromFloat(50.0, 2, invoice.CurrencyEUR),
 		TotalVAT: invoice.NewMoneyFromFloat(10.0, 2, invoice.CurrencyEUR),
 		TotalTTC: invoice.NewMoneyFromFloat(999.0, 2, invoice.CurrencyEUR),
 	}
