@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/prometheus/client_golang v1.24.1
+	github.com/shopspring/decimal v1.4.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
