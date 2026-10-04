@@ -1,33 +1,28 @@
-﻿package lifecycle_test
+package lifecycle
 
 import (
+"errors"
 "testing"
-"github.com/adlanegrm-oss/einvoice-saas/pkg/lifecycle"
 )
 
-func TestLifecycleTransitions(t *testing.T) {
-sm := lifecycle.New(lifecycle.StateDraft)
-
-// DRAFT -> DEPOSEE : Valide
-if err := sm.TransitionTo(lifecycle.StateDeposited); err != nil {
-t.Fatalf("Transition DRAFT -> DEPOSEE refusée: %v", err)
+func TestStateTransitions(t *testing.T) {
+s, err := TransitionStatus(StatusDraft, StatusValidating)
+if err != nil || s != StatusValidating {
+t.Fatalf("attendu VALIDATING, obtenu %s (%v)", s, err)
 }
 
-// DEPOSEE -> ENCAISSEE : Valide
-if err := sm.TransitionTo(lifecycle.StateCollected); err != nil {
-t.Fatalf("Transition DEPOSEE -> ENCAISSEE refusée: %v", err)
+s, err = TransitionStatus(StatusAccepted, StatusIssued)
+if err != nil || s != StatusIssued {
+t.Fatalf("attendu ISSUED, obtenu %s (%v)", s, err)
 }
 
-// ENCAISSEE est terminal -> tentative de transition doit échouer
-if err := sm.TransitionTo(lifecycle.StateRefused); err == nil {
-t.Fatalf("Une transition depuis un état terminal aurait dû échouer")
-}
+_, err = TransitionStatus(StatusIssued, StatusDraft)
+if !errors.Is(err, ErrInvoiceImmutable) {
+t.Fatalf("attendu ErrInvoiceImmutable, obtenu %v", err)
 }
 
-func TestPurgePredicate(t *testing.T) {
-predicate := lifecycle.PurgeQueryPredicate()
-expected := "status IN ('REJETEE', 'REFUSEE', 'ENCAISSEE') AND updated_at < ?"
-if predicate != expected {
-t.Fatalf("Prédicat de purge invalide.\nAttendu: %s\nReçu: %s", expected, predicate)
+_, err = TransitionStatus(StatusDraft, StatusIssued)
+if !errors.Is(err, ErrInvalidTransition) {
+t.Fatalf("attendu ErrInvalidTransition, obtenu %v", err)
 }
 }

@@ -1,69 +1,58 @@
 package lifecycle
 
 import (
-	"fmt"
-	"time"
+"errors"
+"fmt"
 )
 
-// State represents official DGFIP / PDP invoice lifecycle states.
-type State string
+type InvoiceStatus string
 
 const (
-	StateDraft     State = "BROUILLON" // Internal draft
-	StateDeposited State = "DEPOSEE"   // Facture déposée sur la plateforme
-	StateRejected  State = "REJETEE"   // Rejet technique ou de conformité (Terminal)
-	StateRefused   State = "REFUSEE"   // Refusée par le destinataire/acheteur (Terminal)
-	StateCollected State = "ENCAISSEE" // Statut final de paiement/encaissement (Terminal)
+StatusDraft            InvoiceStatus = "DRAFT"
+StatusValidating       InvoiceStatus = "VALIDATING"
+StatusValidated        InvoiceStatus = "VALIDATED"
+StatusQueued           InvoiceStatus = "QUEUED"
+StatusSubmitted        InvoiceStatus = "SUBMITTED"
+StatusAccepted         InvoiceStatus = "ACCEPTED"
+StatusIssued           InvoiceStatus = "ISSUED"
+StatusRejected         InvoiceStatus = "REJECTED"
+StatusTechnicalError   InvoiceStatus = "TECHNICAL_ERROR"
+StatusBusinessRejected InvoiceStatus = "BUSINESS_REJECTED"
 )
 
-func (s State) IsTerminal() bool {
-	switch s {
-	case StateRejected, StateRefused, StateCollected:
-		return true
-	default:
-		return false
-	}
+var validTransitions = map[InvoiceStatus][]InvoiceStatus{
+StatusDraft:            {StatusValidating},
+StatusValidating:       {StatusValidated, StatusRejected},
+StatusValidated:        {StatusQueued},
+StatusQueued:           {StatusSubmitted},
+StatusSubmitted:        {StatusAccepted, StatusTechnicalError, StatusBusinessRejected},
+StatusTechnicalError:   {StatusQueued, StatusRejected},
+StatusAccepted:         {StatusIssued},
+StatusIssued:           {},
+StatusRejected:         {},
+StatusBusinessRejected: {},
 }
 
-// StateMachine manages transitions strictly without compatibility aliases.
-type StateMachine struct {
-	CurrentState State
-	UpdatedAt    time.Time
+var (
+ErrInvalidTransition = errors.New("transition de statut interdite")
+ErrInvoiceImmutable  = errors.New("document emis scelle : modification interdite")
+)
+
+func TransitionStatus(current, target InvoiceStatus) (InvoiceStatus, error) {
+if current == StatusIssued {
+return current, ErrInvoiceImmutable
 }
 
-func New(initial State) StateMachine {
-	return StateMachine{
-		CurrentState: initial,
-		UpdatedAt:    time.Now().UTC(),
-	}
+allowed, ok := validTransitions[current]
+if !ok {
+return current, fmt.Errorf("%w: statut source inconnu %s", ErrInvalidTransition, current)
 }
 
-// TransitionTo attempts a state change adhering to the French invoice lifecycle.
-func (sm *StateMachine) TransitionTo(target State) error {
-	if sm.CurrentState.IsTerminal() {
-		return fmt.Errorf("illegal transition: state %s is terminal", sm.CurrentState)
-	}
-
-	switch sm.CurrentState {
-	case StateDraft:
-		if target == StateDeposited {
-			sm.CurrentState = target
-			sm.UpdatedAt = time.Now().UTC()
-			return nil
-		}
-	case StateDeposited:
-		if target == StateRejected || target == StateRefused || target == StateCollected {
-			sm.CurrentState = target
-			sm.UpdatedAt = time.Now().UTC()
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid state transition from %s to %s", sm.CurrentState, target)
+for _, s := range allowed {
+if s == target {
+return target, nil
+}
 }
 
-// PurgeQueryPredicate returns the SQL condition for safe record purging.
-// Replaces obsolete 'CLOSED' status with actual terminal states.
-func PurgeQueryPredicate() string {
-	return "status IN ('REJETEE', 'REFUSEE', 'ENCAISSEE') AND updated_at < ?"
+return current, fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, current, target)
 }

@@ -14,17 +14,8 @@ Service string `json:"service"`
 Version string `json:"version"`
 }
 
-type ValidationRequest struct {
-Lines        []validation.InvoiceLine `json:"lines"`
-TaxSubtotals []validation.TaxSubtotal `json:"tax_subtotals"`
-TotalHT      int64                    `json:"total_ht"`
-TotalTVA     int64                    `json:"total_tva"`
-TotalTTC     int64                    `json:"total_ttc"`
-}
-
-type ValidationResponse struct {
-Valid  bool     `json:"valid"`
-Errors []string `json:"errors,omitempty"`
+type ErrorResponse struct {
+Error string `json:"error"`
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -40,31 +31,27 @@ Version: "v0.2.0-alpha",
 })
 
 case http.MethodPost:
-var req ValidationRequest
-if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+var inv validation.InvoiceTotals
+if err := json.NewDecoder(r.Body).Decode(&inv); err != nil {
 w.WriteHeader(http.StatusBadRequest)
-json.NewEncoder(w).Encode(ValidationResponse{
-Valid:  false,
-Errors: []string{fmt.Sprintf("JSON invalide: %v", err)},
+json.NewEncoder(w).Encode(ErrorResponse{
+Error: fmt.Sprintf("Corps JSON invalide: %v", err),
 })
 return
 }
 
-errs := validation.ValidateStrictEN16931(req.Lines, req.TaxSubtotals, req.TotalHT, req.TotalTVA, req.TotalTTC)
-if len(errs) > 0 {
+report := validation.ValidateStrictEN16931(inv)
+if !report.Valid {
 w.WriteHeader(http.StatusUnprocessableEntity)
-json.NewEncoder(w).Encode(ValidationResponse{
-Valid:  false,
-Errors: errs,
-})
+json.NewEncoder(w).Encode(report)
 return
 }
 
 w.WriteHeader(http.StatusOK)
-json.NewEncoder(w).Encode(ValidationResponse{Valid: true})
+json.NewEncoder(w).Encode(report)
 
 default:
 w.WriteHeader(http.StatusMethodNotAllowed)
-json.NewEncoder(w).Encode(map[string]string{"error": "Methode non autorisee"})
+json.NewEncoder(w).Encode(ErrorResponse{Error: "Methode non autorisee"})
 }
 }
