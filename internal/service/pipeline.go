@@ -178,3 +178,36 @@ Status:      status.StateTransmitted,
 PayloadHash: hash,
 }, nil
 }
+
+// TransitionInvoiceStatus applique une transition d'état sur le cycle de vie d'une facture
+func (p *InvoicePipeline) TransitionInvoiceStatus(ctx context.Context, invoiceID string, targetState status.InvoiceState, actor, reason string) error {
+history, err := p.repo.GetStatusHistory(ctx, invoiceID)
+if err != nil {
+return fmt.Errorf("lecture historique de statut: %w", err)
+}
+
+currentState := status.StateDeposited
+prevSig := ""
+if len(history) > 0 {
+lastEntry := history[len(history)-1]
+currentState = lastEntry.ToState
+prevSig = lastEntry.Signature
+}
+
+event, err := p.sm.Transition(invoiceID, currentState, targetState, actor, reason, "", prevSig)
+if err != nil {
+return fmt.Errorf("transition de statut invalide (%s -> %s): %w", currentState, targetState, err)
+}
+
+event.ID = fmt.Sprintf("evt_%s_%d", invoiceID, time.Now().UnixNano())
+if event.Signature == "" {
+event.Signature = fmt.Sprintf("sig_%s_%d", invoiceID, time.Now().UnixNano())
+}
+
+if err := p.repo.RecordStatusTransition(ctx, event, invoiceID, nil); err != nil {
+return fmt.Errorf("enregistrement transition de statut: %w", err)
+}
+
+return nil
+}
+

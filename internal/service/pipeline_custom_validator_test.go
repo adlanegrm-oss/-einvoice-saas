@@ -25,38 +25,6 @@ db, err := sql.Open("sqlite", ":memory:")
 if err != nil {
 t.Fatalf("échec ouverture base mémoire: %v", err)
 }
-
-_, err = db.Exec(`
-CREATE TABLE IF NOT EXISTS audit_logs (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-tenant_id TEXT,
-action TEXT,
-performed_by TEXT,
-details TEXT,
-created_at DATETIME
-);
-CREATE TABLE IF NOT EXISTS invoice_status_events (
-id TEXT PRIMARY KEY,
-invoice_id TEXT NOT NULL,
-from_state TEXT NOT NULL,
-to_state TEXT NOT NULL,
-actor TEXT NOT NULL,
-reason TEXT,
-timestamp DATETIME NOT NULL,
-signature TEXT NOT NULL,
-previous_signature TEXT
-);
-CREATE TABLE IF NOT EXISTS invoices (
-id TEXT PRIMARY KEY,
-status TEXT NOT NULL,
-payload_hash TEXT NOT NULL,
-created_at DATETIME NOT NULL,
-updated_at DATETIME NOT NULL
-);
-`)
-if err != nil {
-t.Fatalf("échec création schéma test: %v", err)
-}
 return db
 }
 
@@ -91,14 +59,27 @@ TotalTTC: invoice.NewMoneyFromFloat(1200.0, 2, invoice.EUR),
 }
 }
 
+type customMockDir struct{}
+func (m *customMockDir) Lookup(ctx context.Context, participantID string) (*dispatcher.TargetEndpoint, error) {
+return &dispatcher.TargetEndpoint{ReceiverID: participantID, PlatformName: "PDP Mock", AS4Endpoint: "https://mock.pdp"}, nil
+}
+
+type customMockAS4 struct{}
+func (m *customMockAS4) SendPayload(ctx context.Context, ep *dispatcher.TargetEndpoint, p []byte) (string, error) {
+return "ACK-MOCK-OK", nil
+}
+
 func TestPipeline_CustomValidator_Integration(t *testing.T) {
 db := setupTestPipelineDB(t)
 defer db.Close()
 
-repo := repository.NewSQLiteInvoiceRepository(db)
+repo, err := repository.NewSQLiteInvoiceRepository(db)
+	if err != nil {
+		t.Fatalf("échec création repo: %v", err)
+	}
 val := en16931.NewValidator()
 sm := status.NewStateMachine()
-disp := dispatcher.NewDispatcher()
+disp := dispatcher.NewDispatcher(&customMockDir{}, &customMockAS4{})
 
 reg := rulesets.NewRegistryValidator()
 // Règle spécifique Client M : Le numéro de facture doit être FA-CLIENTM-2026
@@ -151,3 +132,7 @@ if resMOk.Status != status.StateTransmitted {
 t.Fatalf("attendu StateTransmitted pour CLIENT_M valide, reçu %s", resMOk.Status)
 }
 }
+
+
+
+
