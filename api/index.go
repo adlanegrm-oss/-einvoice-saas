@@ -15,11 +15,11 @@ Version string `json:"version"`
 }
 
 type ValidationRequest struct {
-Lines       []validation.InvoiceLine `json:"lines"`
+Lines        []validation.InvoiceLine `json:"lines"`
 TaxSubtotals []validation.TaxSubtotal `json:"tax_subtotals"`
-TotalHT     int64                    `json:"total_ht"`
-TotalTVA    int64                    `json:"total_tva"`
-TotalTTC    int64                    `json:"total_ttc"`
+TotalHT      int64                    `json:"total_ht"`
+TotalTVA     int64                    `json:"total_tva"`
+TotalTTC     int64                    `json:"total_ttc"`
 }
 
 type ValidationResponse struct {
