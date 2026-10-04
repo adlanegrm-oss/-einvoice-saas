@@ -1,15 +1,28 @@
-export function renderGenericView(roleKey, viewId) {
+﻿import { initDropZone } from '../components/DropZone.js';
+
+export function renderGenericView(moduleKey, moduleTitle, roleKey, roleCfg) {
+  const isClientUpload = moduleKey === 'client-upload';
+
   return `
-    <div class="card">
-      <h2>Module ${viewId}</h2>
-      <p style="margin-top:8px; color:var(--text-secondary);">
-        Interface opérationnelle pour le profil <b>${roleKey}</b>.
-      </p>
-      <div style="margin-top:20px; padding:16px; background:var(--bg-subtle); border-radius:6px; font-family:monospace; font-size:0.85rem;">
-        CONTEXT_ROLE: ${roleKey}<br>
-        ENDPOINT_BINDING: /api/v1/${roleKey.toLowerCase()}/${viewId}<br>
-        ENFORCE_SCHEMA: EN_16931_CIUS_FR
+    <div class="module-card">
+      <div class="module-header">
+        <h1 class="module-title">Module ${moduleKey}</h1>
+        <p class="module-subtitle">Interface opérationnelle pour le profil <strong>${roleKey}</strong>.</p>
       </div>
+
+      <div class="code-banner">
+        <div><code>CONTEXT_ROLE: ${roleKey}</code></div>
+        <div><code>ENDPOINT_BINDING: /api/v1/${roleCfg.baseRoute || 'client'}/${moduleKey}</code></div>
+        <div><code>ENFORCE_SCHEMA: EN_16931_CIUS_FR</code></div>
+      </div>
+
+      ${isClientUpload ? `<div id="dropzone-root"></div>` : ''}
     </div>
   `;
+}
+
+export function bindGenericViewEvents(moduleKey) {
+  if (moduleKey === 'client-upload') {
+    initDropZone('dropzone-root');
+  }
 }
