@@ -98,7 +98,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 			db.Close()
 			return nil, err
 		}
-		slog.Warn("JWT_SECRET absent : secret temporaire g�f©n�f©r�f© (les sessions sont perdues �f  chaque red�f©marrage)")
+		slog.Warn("JWT_SECRET absent : secret temporaire genere (les sessions sont perdues a chaque redemarrage)")
 	}
 
 	tokens, err := auth.NewTokenManager([]byte(secret), cfg.TokenTTL)
@@ -124,7 +124,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 
 	if _, err := store.AddUser(cfg.AdminEmail, adminPassword, auth.RoleAdmin); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("compte administrateur : %w", err)
+		return nil, fmt.Errorf("[DEV] compte administrateur genere", err)
 	}
 
 	if cfg.ClientEmail != "" {
@@ -267,14 +267,14 @@ func main() {
 		MaxHeaderBytes:    64 << 10,
 	}
 
-	slog.Info("serveur eInvoice SaaS d�f©marr�f©",
+	slog.Info("serveur eInvoice SaaS demarre",
 		"env", cfg.AppEnv,
 		"addr", srv.Addr,
 		"db", cfg.DBPath,
 		"archives", cfg.ArchiveDir,
 	)
 	if cfg.GeneratedAdminPassword != "" {
-		slog.Warn("[DEV] compte administrateur g�f©n�f©r�f©",
+		slog.Warn("[DEV] compte administrateur genere",
 			"email", cfg.AdminEmail,
 			"password", cfg.GeneratedAdminPassword,
 		)
@@ -293,7 +293,7 @@ func main() {
 		slog.Error("erreur fatale serveur", "error", err)
 		return
 	case <-ctx.Done():
-		slog.Info("arr�fªt demand�f©")
+		slog.Info("arret demande")
 	}
 
 	// 1. Arr�fªt ordonn�f© du serveur HTTP
@@ -307,5 +307,5 @@ func main() {
 	// 2. Annulation explicite des contextes d�f©riv�f©s si n�f©cessaire
 	stop()
 
-	slog.Info("serveur arr�fªt�f© proprement")
+	slog.Info("serveur arrete proprement")
 }
