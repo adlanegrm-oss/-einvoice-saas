@@ -124,7 +124,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 
 	if _, err := store.AddUser(cfg.AdminEmail, adminPassword, auth.RoleAdmin); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("[DEV] compte administrateur genere", err)
+		return nil, fmt.Errorf("[DEV] compte administrateur genere : %w", err)
 	}
 
 	if cfg.ClientEmail != "" {
@@ -309,3 +309,4 @@ func main() {
 
 	slog.Info("serveur arrete proprement")
 }
+
