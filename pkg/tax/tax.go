@@ -9,13 +9,13 @@ import (
 type Category string
 
 const (
-	StandardRate     Category = "S"  // Standard rate
-	ZeroRated        Category = "Z"  // Zero rated goods
-	Exempt           Category = "E"  // Exempt from tax
-	ReverseCharge    Category = "AE" // VAT Reverse charge
-	VATExemptEEA     Category = "K"  // VAT exempt for EEA intra-community supply
-	FreeExport       Category = "G"  // Free export item, tax not charged
-	ServicesOutside  Category = "O"  // Services outside scope of tax
+	StandardRate    Category = "S"  // Standard rate
+	ZeroRated       Category = "Z"  // Zero rated goods
+	Exempt          Category = "E"  // Exempt from tax
+	ReverseCharge   Category = "AE" // VAT Reverse charge
+	VATExemptEEA    Category = "K"  // VAT exempt for EEA intra-community supply
+	FreeExport      Category = "G"  // Free export item, tax not charged
+	ServicesOutside Category = "O"  // Services outside scope of tax
 )
 
 // TaxPercent represents VAT rate in basis points (e.g. 2000 = 20.00%, 550 = 5.50%).
@@ -39,12 +39,12 @@ func (tp TaxPercent) String() string {
 
 // Subtotal represents EN 16931 VAT breakdown item (BG-23).
 type Subtotal struct {
-	Category        Category        // BT-118
-	Rate            TaxPercent      // BT-119 (0% for E, AE, Z, etc.)
-	TaxableAmount   money.Money     // BT-116
-	TaxAmount       money.Money     // BT-117
-	ExemptionReason string          // BT-120 (mandatory if E or AE)
-	ExemptionCode   string          // BT-121
+	Category        Category    // BT-118
+	Rate            TaxPercent  // BT-119 (0% for E, AE, Z, etc.)
+	TaxableAmount   money.Money // BT-116
+	TaxAmount       money.Money // BT-117
+	ExemptionReason string      // BT-120 (mandatory if E or AE)
+	ExemptionCode   string      // BT-121
 }
 
 // CalculateVATBreakdown calculates the exact VAT amount using half-even rounding.

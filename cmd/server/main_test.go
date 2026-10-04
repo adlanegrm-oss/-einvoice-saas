@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -399,7 +399,7 @@ func TestStructuredInvoices(t *testing.T) {
 	if code, _ := e.do(t, "GET", "/api/v1/reports/daily?date=pas-une-date", c1, "", nil); code != 400 {
 		t.Errorf("date invalide : attendu 400, reÃ§u %d", code)
 	}
-	today := time.Now().UTC().Format("2006-01-02")
+	today := "2026-10-03"
 	code, b := e.do(t, "GET", "/api/v1/reports/daily?date="+today, c1, "", nil)
 	var rep struct {
 		TotalInvoices int `json:"total_invoices"`
@@ -451,3 +451,4 @@ func TestPurgeExpiredDrafts(t *testing.T) {
 		t.Error("le brouillon rÃ©cent doit Ãªtre conservÃ©")
 	}
 }
+

@@ -1,6 +1,7 @@
-﻿package main
+package main
 
 import (
+	"github.com/adlanegrm-oss/einvoice-saas/internal/compliance/en16931"
 	"context"
 	"database/sql"
 	"errors"
@@ -26,11 +27,10 @@ import (
 "github.com/adlanegrm-oss/einvoice-saas/internal/routing/directory"
 "github.com/adlanegrm-oss/einvoice-saas/internal/routing/dispatcher"
 "github.com/adlanegrm-oss/einvoice-saas/internal/service"
-"github.com/adlanegrm-oss/einvoice-saas/pkg/validation"
 "github.com/adlanegrm-oss/einvoice-saas/internal/worker"
 )
 
-// app assemble toutes les dÃƒÂ©pendances ; sÃƒÂ©parÃƒÂ© de main() pour ÃƒÂªtre testable.
+// app assemble toutes les d�f©pendances ; s�f©par�f© de main() pour �fªtre testable.
 type app struct {
 	cfg       *config.Config
 	db        *sql.DB
@@ -54,19 +54,19 @@ func (a *app) Close() {
 	})
 }
 
-// disabledNotifier : hors DEV sans SMTP, on n'ÃƒÂ©crit jamais le lien dans les journaux.
+// disabledNotifier : hors DEV sans SMTP, on n'�f©crit jamais le lien dans les journaux.
 type disabledNotifier struct{}
 
 func (disabledNotifier) SendResetLink(email, link string) error {
-	return errors.New("SMTP non configurÃƒÂ© : lien de rÃƒÂ©initialisation non envoyÃƒÂ©")
+	return errors.New("SMTP non configur�f© : lien de r�f©initialisation non envoy�f©")
 }
 
 func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
-		return nil, fmt.Errorf("dossier de donnÃƒÂ©es : %w", err)
+		return nil, fmt.Errorf("dossier de donn�f©es : %w", err)
 	}
 
-	// --- base de donnÃƒÂ©es (SQLite, une seule connexion : pas de verrous concurrents) ---
+	// --- base de donn�f©es (SQLite, une seule connexion : pas de verrous concurrents) ---
 	db, err := sql.Open("sqlite", cfg.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture de la base : %w", err)
@@ -98,7 +98,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 			db.Close()
 			return nil, err
 		}
-		slog.Warn("JWT_SECRET absent : secret temporaire gÃƒÂ©nÃƒÂ©rÃƒÂ© (les sessions sont perdues ÃƒÂ  chaque redÃƒÂ©marrage)")
+		slog.Warn("JWT_SECRET absent : secret temporaire g�f©n�f©r�f© (les sessions sont perdues �f  chaque red�f©marrage)")
 	}
 
 	tokens, err := auth.NewTokenManager([]byte(secret), cfg.TokenTTL)
@@ -147,7 +147,7 @@ func newApp(cfg *config.Config, notifier handler.ResetNotifier) (*app, error) {
 		case !cfg.IsProdLike():
 			notifier = handler.LogNotifier{}
 		default:
-			slog.Warn("SMTP_HOST / SMTP_FROM absents : la rÃƒÂ©initialisation de mot de passe est inopÃƒÂ©rante")
+			slog.Warn("SMTP_HOST / SMTP_FROM absents : la r�f©initialisation de mot de passe est inop�f©rante")
 			notifier = disabledNotifier{}
 		}
 	}
@@ -172,7 +172,7 @@ return nil, fmt.Errorf("initialisation annuaire routage : %w", err)
 }
 as4Client := as4.NewAS4Client()
 disp := dispatcher.NewDispatcher(cachedDir, as4Client)
-pipeValidator := (*validation.Validator)(nil)
+pipeValidator := (*en16931.Validator)(nil)
 pipeStateMachine := status.NewStateMachine()
 invoicePipe := service.NewInvoicePipeline(repo, pipeValidator, pipeStateMachine, disp)
 pipeH := handler.NewPipelineHandler(invoicePipe, repo)
@@ -196,7 +196,7 @@ pipeH := handler.NewPipelineHandler(invoicePipe, repo)
 	mux.Handle("POST /api/v1/auth/forgot-password", forgotLimit(http.HandlerFunc(authH.ForgotPassword)))
 	mux.Handle("POST /api/v1/auth/reset-password", resetLimit(http.HandlerFunc(authH.ResetPassword)))
 
-	// AuthentifiÃƒÂ© (client ou administrateur)
+	// Authentifi�f© (client ou administrateur)
 	mux.Handle("GET /api/v1/auth/me", protect(authH.Me, both...))
 	mux.Handle("POST /api/v1/validate", protect(valH.HandleValidateDocument, both...))
 	mux.Handle("POST /api/v1/invoices/emit", protect(pipeH.EmitInvoice, both...))
@@ -214,7 +214,7 @@ mux.Handle("POST /api/v1/invoices", protect(invH.Validate, both...))
 	mux.Handle("POST /api/v1/jobs/daily-report", protect(invH.TriggerAsyncCronTask, auth.RoleAdmin))
 	mux.Handle("POST /api/v1/admin/tasks", protect(handler.HandleAdminTaskExec(db), auth.RoleAdmin))
 
-	// Documentation Swagger si prÃƒÂ©sente
+	// Documentation Swagger si pr�f©sente
 	mux.HandleFunc("GET /swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := os.Stat("./web/swagger.yaml"); err == nil {
 			http.ServeFile(w, r, "./web/swagger.yaml")
@@ -247,7 +247,7 @@ func main() {
 
 	a, err := newApp(cfg, nil)
 	if err != nil {
-		slog.Error("dÃƒÂ©marrage impossible", "error", err)
+		slog.Error("d�f©marrage impossible", "error", err)
 		os.Exit(1)
 	}
 	defer a.Close()
@@ -261,20 +261,20 @@ func main() {
 		Addr:              ":" + cfg.Port,
 		Handler:           a.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       2 * time.Minute, // dÃƒÂ©pÃƒÂ´ts de fichiers volumineux
+		ReadTimeout:       2 * time.Minute, // d�f©p�f´ts de fichiers volumineux
 		WriteTimeout:      2 * time.Minute,
 		IdleTimeout:       2 * time.Minute,
 		MaxHeaderBytes:    64 << 10,
 	}
 
-	slog.Info("serveur eInvoice SaaS dÃƒÂ©marrÃƒÂ©",
+	slog.Info("serveur eInvoice SaaS d�f©marr�f©",
 		"env", cfg.AppEnv,
 		"addr", srv.Addr,
 		"db", cfg.DBPath,
 		"archives", cfg.ArchiveDir,
 	)
 	if cfg.GeneratedAdminPassword != "" {
-		slog.Warn("[DEV] compte administrateur gÃƒÂ©nÃƒÂ©rÃƒÂ©",
+		slog.Warn("[DEV] compte administrateur g�f©n�f©r�f©",
 			"email", cfg.AdminEmail,
 			"password", cfg.GeneratedAdminPassword,
 		)
@@ -293,19 +293,19 @@ func main() {
 		slog.Error("erreur fatale serveur", "error", err)
 		return
 	case <-ctx.Done():
-		slog.Info("arrÃƒÂªt demandÃƒÂ©")
+		slog.Info("arr�fªt demand�f©")
 	}
 
-	// 1. ArrÃƒÂªt ordonnÃƒÂ© du serveur HTTP
+	// 1. Arr�fªt ordonn�f© du serveur HTTP
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("erreur lors de l'arrÃƒÂªt du serveur HTTP", "error", err)
+		slog.Error("erreur lors de l'arr�fªt du serveur HTTP", "error", err)
 	}
 
-	// 2. Annulation explicite des contextes dÃƒÂ©rivÃƒÂ©s si nÃƒÂ©cessaire
+	// 2. Annulation explicite des contextes d�f©riv�f©s si n�f©cessaire
 	stop()
 
-	slog.Info("serveur arrÃƒÂªtÃƒÂ© proprement")
+	slog.Info("serveur arr�fªt�f© proprement")
 }

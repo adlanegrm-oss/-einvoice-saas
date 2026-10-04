@@ -34,15 +34,15 @@ type ValidationReport struct {
 }
 
 type InvoiceTotals struct {
-	InvoiceNumber       string
-	Currency            money.Currency
-	SumInvoiceLines     money.Money    // BT-106
-	AllowanceTotal      money.Money    // BT-107
-	ChargeTotal         money.Money    // BT-108
-	TaxExclusiveAmount  money.Money    // BT-109
-	TaxInclusiveAmount  money.Money    // BT-110
-	TaxTotalAmount      money.Money    // BT-111
-	VATBreakdowns       []tax.Subtotal // BG-23
+	InvoiceNumber      string
+	Currency           money.Currency
+	SumInvoiceLines    money.Money    // BT-106
+	AllowanceTotal     money.Money    // BT-107
+	ChargeTotal        money.Money    // BT-108
+	TaxExclusiveAmount money.Money    // BT-109
+	TaxInclusiveAmount money.Money    // BT-110
+	TaxTotalAmount     money.Money    // BT-111
+	VATBreakdowns      []tax.Subtotal // BG-23
 }
 
 // ValidateStrictEN16931 checks compliance against official BR-xx rules without arbitrary tolerances.

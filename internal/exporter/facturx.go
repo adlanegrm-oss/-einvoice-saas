@@ -8,7 +8,7 @@ import (
 	"github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 )
 
-// CrossIndustryInvoice modÃ©lise la structure XML Factur-X / CII
+// CrossIndustryInvoice modélise la structure XML Factur-X / CII
 type CrossIndustryInvoice struct {
 	XMLName  xml.Name `xml:"rsm:CrossIndustryInvoice"`
 	XmlnsRSM string   `xml:"xmlns:rsm,attr"`
@@ -48,7 +48,7 @@ type CrossIndustryInvoice struct {
 	} `xml:"rsm:SupplyChainTradeTransaction"`
 }
 
-// GenerateFacturXXML gÃ©nÃ¨re un document XML conforme au profil Factur-X MINIMUM/BASIC
+// GenerateFacturXXML génère un document XML conforme au profil Factur-X MINIMUM/BASIC
 func GenerateFacturXXML(inv invoice.Invoice) ([]byte, error) {
 	cii := CrossIndustryInvoice{
 		XmlnsRSM: "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100",

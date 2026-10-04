@@ -2,12 +2,12 @@ package exporter
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -25,87 +25,81 @@ func NewFacturXEnginePDFCPU(masterTemplatePath string) *FacturXEnginePDFCPU {
 	}
 }
 
-// BuildFacturXPDFA3 incorpore formellement le XML CII via l'API PDF/A de pdfcpu
+// normalizeFacturXProfile valide et normalise le profil Factur-X.
+func normalizeFacturXProfile(p string) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "EN 16931", nil
+	}
+	key := strings.ToUpper(strings.Join(strings.Fields(p), " "))
+	switch key {
+	case "MINIMUM":
+		return "MINIMUM", nil
+	case "BASIC WL", "BASICWL":
+		return "BASIC WL", nil
+	case "BASIC":
+		return "BASIC", nil
+	case "EN 16931", "EN16931":
+		return "EN 16931", nil
+	case "EXTENDED":
+		return "EXTENDED", nil
+	}
+	return "", fmt.Errorf("facturx: unsupported profile %q", p)
+}
+
+// BuildFacturXPDFA3 attache factur-x.xml au PDF de base puis finalise le
+// document (metadonnees XMP Factur-X, /AF, /AFRelationship, MIME type).
+//
+// NB: le PDF de base doit deja etre un PDF/A-3 valide (OutputIntent, polices
+// embarquees...). Ce code n'en fait pas un PDF/A-3 a partir d'un PDF quelconque.
 func (e *FacturXEnginePDFCPU) BuildFacturXPDFA3(basePDF io.ReadSeeker, xmlPayload []byte, profile string) ([]byte, error) {
 	if len(xmlPayload) == 0 {
 		return nil, fmt.Errorf("facturx: xml payload cannot be empty")
 	}
-	if profile == "" {
-		profile = "EN 16931"
+	prof, err := normalizeFacturXProfile(profile)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpDir, err := os.MkdirTemp("", "facturx-*")
+	if err != nil {
+		return nil, fmt.Errorf("facturx: failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	tmpXMLPath := filepath.Join(tmpDir, "factur-x.xml")
+	if err := os.WriteFile(tmpXMLPath, xmlPayload, 0600); err != nil {
+		return nil, fmt.Errorf("facturx: failed to write xml to temp file: %w", err)
 	}
 
 	conf := model.NewDefaultConfiguration()
-
-	// 1. Attachement formel du fichier factur-x.xml avec relation AFRelationship Alternative
-	attachment := model.Attachment{
-		Reader:      bytes.NewReader(xmlPayload),
-		ID:          "factur-x.xml",
-		Desc:        "Facture electronique Factur-X / ZUGFeRD",
-		ModTime:     time.Now().UTC(),
-	}
+	conf.WriteObjectStream = false
+	// xref classique (requis par la mise a jour incrementale de finalizeFacturX)
+	conf.WriteXRefStream = false
 
 	var outputBuf bytes.Buffer
-	err := api.AddAttachments(basePDF, &outputBuf, []model.Attachment{attachment}, conf)
-	if err != nil {
+	ctx := context.Background()
+
+	// coll=false : un Factur-X n'est PAS un "PDF portfolio" (/Collection interdit en PDF/A-3).
+	if err := api.AddAttachments(ctx, basePDF, &outputBuf, []string{tmpXMLPath}, false, conf); err != nil {
 		return nil, fmt.Errorf("pdfcpu: failed to attach factur-x.xml: %w", err)
 	}
 
-	// 2. Injection du métadata XMP spécifique Factur-X
-	resBytes := outputBuf.Bytes()
-	finalBytes, err := injectFacturXXMPMetadata(resBytes, xmlPayload, profile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to inject Factur-X XMP: %w", err)
-	}
-
-	return finalBytes, nil
+	return finalizeFacturX(outputBuf.Bytes(), prof, time.Now())
 }
 
-func injectFacturXXMPMetadata(pdfData []byte, xmlBytes []byte, profile string) ([]byte, error) {
-	h := sha256.Sum256(xmlBytes)
-	xmlDigest := hex.EncodeToString(h[:])
-
-	xmpPackage := fmt.Sprintf(`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-    <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-      <pdfaExtension:schemas>
-        <rdf:Bag>
-          <rdf:li rdf:parseType="Resource">
-            <pdfaProperty:name>DocumentFileName</pdfaProperty:name>
-            <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-            <pdfaProperty:description>Nom du fichier de facture incorpore</pdfaProperty:description>
-          </rdf:li>
-        </rdf:Bag>
-      </pdfaExtension:schemas>
-    </rdf:Description>
-    <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
-      <pdfaid:part>3</pdfaid:part>
-      <pdfaid:conformance>B</pdfaid:conformance>
-    </rdf:Description>
-    <rdf:Description rdf:about="" xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#">
-      <fx:DocumentType>INVOICE</fx:DocumentType>
-      <fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>
-      <fx:Version>1.0</fx:Version>
-      <fx:ConformanceLevel>%s</fx:ConformanceLevel>
-      <fx:Digest>%s</fx:Digest>
-    </rdf:Description>
-  </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>`, profile, xmlDigest)
-
-	// Substitution ou incorporation contrôlée dans le dictionnaire /Metadata
-	if bytes.Contains(pdfData, []byte("/Metadata")) {
-		return pdfData, nil
-	}
-
-	return pdfData, nil
-}
-
-// ValidateWithVeraPDFCLI exécute le binaire officiel veraPDF en CLI si disponible sur la machine
-func ValidateWithVeraPDFCLI(pdfPath string) (bool, string, error) {
+// VeraPDFAvailable indique si le CLI verapdf est present dans le PATH.
+func VeraPDFAvailable() bool {
 	_, err := exec.LookPath("verapdf")
-	if err != nil {
-		return true, "VeraPDF CLI not installed in path (offline test passed)", nil
+	return err == nil
+}
+
+// ValidateWithVeraPDFCLI valide le PDF avec veraPDF (flavour 3b).
+// ATTENTION: si veraPDF n'est pas installe, retourne (true, ...) pour ne pas
+// casser les tests hors-ligne. Utiliser VeraPDFAvailable() pour distinguer
+// "valide" de "non verifie".
+func ValidateWithVeraPDFCLI(pdfPath string) (bool, string, error) {
+	if !VeraPDFAvailable() {
+		return true, "VeraPDF CLI not installed in path (validation SKIPPED)", nil
 	}
 
 	cmd := exec.Command("verapdf", "--flavour", "3b", "--format", "text", pdfPath)

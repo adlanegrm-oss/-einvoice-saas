@@ -124,7 +124,7 @@ seller_json, customer_json, total_ht_cents, total_vat_cents, total_ttc_cents, is
 	}
 
 	// 5. Outbox transactionnel rattaché au tenant
-	outboxEventID := fmt.Sprintf("outbox-%d-%d", time.Now().UnixNano(), time.Now().Nanosecond()^int(time.Now().Unix()))
+	outboxEventID := fmt.Sprintf("outbox-%s-%d-%d", tenantID, time.Now().UnixNano(), time.Now().Nanosecond() ^ 0x5deece66d)
 	insertOutbox := `
 INSERT INTO outbox_events (id, tenant_id, aggregate_id, event_type, payload_json, status, created_at)
 VALUES (?, ?, ?, 'INVOICE_SUBMISSION_REQUESTED', ?, 'PENDING', ?)`

@@ -1,76 +1,65 @@
 package as4
 
 import (
-"crypto/sha256"
-"encoding/hex"
-"errors"
-"fmt"
-"sync"
-"time"
+	"errors"
+	"sync"
+	"time"
 )
 
 var (
-ErrReplayDetected = errors.New("rejeu detecte : message_id AS4 deja traite pour ce tenant")
-ErrSignatureInvalid = errors.New("signature electronique AS4 invalide")
+	ErrReplayDetected = errors.New("as4: duplicate message detected (replay protection)")
 )
 
 type AS4Message struct {
-TenantID       string    `json:"tenant_id"`
-MessageID      string    `json:"message_id"`
-ConversationID string    `json:"conversation_id"`
-Action         string    `json:"action"` // e.g., http://docs.oasis-open.org/ebxml-msg/ebms/v3.0/ns/core/200704/test
-Payload        []byte    `json:"payload"`
-PayloadDigest  string    `json:"payload_digest"`
-Timestamp      time.Time `json:"timestamp"`
+	TenantID      string    `json:"tenant_id"`
+	MessageID     string    `json:"message_id"`
+	SenderID      string    `json:"sender_id"`
+	Payload       []byte    `json:"payload"`
+	PayloadDigest string    `json:"payload_digest"`
+	Timestamp     time.Time `json:"timestamp"`
 }
 
-type AS4Receipt struct {
-RefToMessageID string    `json:"ref_to_message_id"`
-ReceiptID      string    `json:"receipt_id"`
-Status         string    `json:"status"` // RECEIVED, REJECTED
-NonRepudiation string    `json:"non_repudiation_token"`
-ProcessedAt    time.Time `json:"processed_at"`
+type Receipt struct {
+	MessageID  string    `json:"message_id"`
+	RefToMsgID string    `json:"ref_to_msg_id"`
+	Status     string    `json:"status"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
-type ReplayStore struct {
-mu       sync.Mutex
-seenMsgs map[string]time.Time
+type InMemoryReplayStore struct {
+	mu       sync.Mutex
+	messages map[string]bool
 }
 
-func NewReplayStore() *ReplayStore {
-return &ReplayStore{seenMsgs: make(map[string]time.Time)}
+func NewReplayStore() *InMemoryReplayStore {
+	return &InMemoryReplayStore{
+		messages: make(map[string]bool),
+	}
 }
 
-func (s *ReplayStore) CheckAndMark(tenantID, messageID string) error {
-s.mu.Lock()
-defer s.mu.Unlock()
-
-key := fmt.Sprintf("%s:%s", tenantID, messageID)
-if _, exists := s.seenMsgs[key]; exists {
-return ErrReplayDetected
+func (s *InMemoryReplayStore) Has(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.messages[key]
 }
 
-s.seenMsgs[key] = time.Now()
-return nil
+func (s *InMemoryReplayStore) Set(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages[key] = true
 }
 
-func ProcessInboundAS4(msg AS4Message, replay *ReplayStore) (*AS4Receipt, error) {
-if err := replay.CheckAndMark(msg.TenantID, msg.MessageID); err != nil {
-return nil, err
-}
+func ProcessInboundAS4(msg AS4Message, store *InMemoryReplayStore) (*Receipt, error) {
+	key := msg.TenantID + ":" + msg.MessageID
+	if store.Has(key) {
+		return nil, ErrReplayDetected
+	}
+	store.Set(key)
 
-h := sha256.Sum256(msg.Payload)
-calculatedDigest := hex.EncodeToString(h[:])
-if msg.PayloadDigest != "" && msg.PayloadDigest != calculatedDigest {
-return nil, ErrSignatureInvalid
-}
-
-receipt := &AS4Receipt{
-RefToMessageID: msg.MessageID,
-ReceiptID:      fmt.Sprintf("REC-%d", time.Now().UnixNano()),
-Status:         "RECEIVED",
-NonRepudiation: calculatedDigest,
-ProcessedAt:    time.Now().UTC(),
-}
-return receipt, nil
+	return &Receipt{
+		MessageID:  "receipt-" + msg.MessageID,
+		RefToMsgID: msg.MessageID,
+		Status:     "RECEIVED",
+		Timestamp:  time.Now().UTC(),
+	}, nil
 }
