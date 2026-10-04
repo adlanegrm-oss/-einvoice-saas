@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_T7A3j5W3wS0jf6QVz4GWrRQN2f0g",
+      "name": "einvoice-saas",
+      "directory": ".",
+      "orgId": "team_5a4iAdNRIX4nkLmaX8w6GDgr"
+    }
+  ]
+}

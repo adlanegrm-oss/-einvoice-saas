@@ -1,0 +1,51 @@
+.dropzone-box {
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+  padding: 32px 16px;
+  text-align: center;
+  margin-top: 20px;
+  background: rgba(59, 130, 246, 0.04);
+  transition: all 0.2s ease;
+}
+
+.dropzone-box.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dropzone-formats {
+  display: block;
+  font-size: 0.82rem;
+  color: #888;
+  margin-top: 8px;
+}
+
+.queue-list {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.status-pending { color: #f59e0b; }
+.status-ok { color: #10b981; font-weight: bold; }
+.status-err { color: #ef4444; font-weight: bold; }
