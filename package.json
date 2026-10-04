@@ -1,0 +1,14 @@
+{
+  "name": "e-invoice-saas-auth-matrix",
+  "version": "1.0.0",
+  "description": "Matrice d'accès et profils pour la suite e-invoice-saas",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
