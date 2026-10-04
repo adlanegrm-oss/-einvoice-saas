@@ -1,42 +1,62 @@
-﻿name: CI Pipeline
+name: Certification CI & Security Audit
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop, 'certification/**' ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  verify:
-    name: Code Quality & Tests
+  build-and-test:
+    name: Code Sanity & Normative Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-          check-latest: true
+          go-version: '1.24'
+          cache: true
 
-      - name: Verify Dependencies
-        run: go mod verify
-
-      - name: Format Check
+      - name: Verify Code Formatting
         run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "Fichiers non formates detectes :"
-            echo "$unformatted"
-            exit 1
-          fi
+          test -z "$(gofmt -l .)" || (echo "Unformatted files found:" && gofmt -l . && exit 1)
 
-      - name: Static Analysis (go vet)
-        run: go vet ./...
+      - name: Go Vet
+        run: go vet ./pkg/... ./internal/...
 
-      - name: Race Detection & Tests
-        run: go test -race -count=1 -v ./...
+      - name: Run Test Suites
+        run: go test -v -race -p 1 ./pkg/... ./internal/...
 
-      - name: Build All Binaries
-        run: go build -v ./...
+  security-audit:
+    name: Vulnerability, SBOM & Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Run Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
