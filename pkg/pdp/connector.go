@@ -7,6 +7,7 @@ import (
 "errors"
 "fmt"
 "net/http"
+"strings"
 "time"
 )
 
@@ -29,15 +30,15 @@ Timeout: 15 * time.Second,
 type SubmissionPayload struct {
 TenantID       string `json:"tenant_id"`
 InvoiceNumber  string `json:"invoice_number"`
-Format         string `json:"format"` // FACTURX, UBL, CII
+Format         string `json:"format"`
 RawData        string `json:"raw_data"`
 IdempotencyKey string `json:"idempotency_key"`
 }
 
 type SubmissionResult struct {
 TransmissionID string `json:"transmission_id"`
-LifecycleCode  string `json:"lifecycle_code"` // 200, 201, 400, etc.
-Status         string `json:"status"`         // DEPOSE, REJETE, VALIDE
+LifecycleCode  string `json:"lifecycle_code"`
+Status         string `json:"status"`
 TrackingURL    string `json:"tracking_url,omitempty"`
 }
 
@@ -57,7 +58,6 @@ req.Header.Set("Content-Type", "application/json")
 req.Header.Set("Authorization", "Bearer "+c.APIKey)
 req.Header.Set("X-Idempotency-Key", payload.IdempotencyKey)
 
-// Exécution HTTP avec capture fine du statut
 resp, err := c.HTTPClient.Do(req)
 if err != nil {
 return nil, fmt.Errorf("echec reseau transmission PDP : %w", err)

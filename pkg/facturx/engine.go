@@ -7,7 +7,6 @@ import (
 "strings"
 
 "github.com/adlanegrm-oss/einvoice-saas/pkg/canonical"
-"github.com/adlanegrm-oss/einvoice-saas/pkg/syntax"
 )
 
 var ErrCoherenceMismatch = errors.New("incoherence stricte entre metadonnees PDF et flux XML CII")
@@ -18,7 +17,6 @@ GrossTTC      int64
 Currency      string
 }
 
-// GenerateMinimalPDFA3 produit un conteneur PDF conforme PDF/A-3 avec le flux CII embarqué
 func GenerateMinimalPDFA3(inv *canonical.CanonicalInvoice, ciiXML []byte) ([]byte, error) {
 var buf bytes.Buffer
 buf.WriteString("%PDF-1.7\n%\xE2\xE3\xCF\xD3\n")
@@ -26,7 +24,6 @@ buf.WriteString("1 0 obj\n<< /Type /Catalog /Pages 2 0 R /AF [4 0 R] >>\nendobj\
 buf.WriteString("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
 buf.WriteString("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] >>\nendobj\n")
 
-// Fichier embarqué Factur-X / CII
 buf.WriteString(fmt.Sprintf("4 0 obj\n<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 5 0 R >> /AFRelationship /Data >>\nendobj\n"))
 buf.WriteString(fmt.Sprintf("5 0 obj\n<< /Type /EmbeddedFile /Subtype /text#2Fxml /Length %d >>\nstream\n", len(ciiXML)))
 buf.Write(ciiXML)
@@ -38,7 +35,6 @@ buf.WriteString("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n500\n%%EOF\n")
 return buf.Bytes(), nil
 }
 
-// VerifyBilateralCoherence valide que le PDF et le XML CII ne divergent pas
 func VerifyBilateralCoherence(pdfData ExtractedPDFSummary, inv *canonical.CanonicalInvoice) error {
 if strings.TrimSpace(pdfData.InvoiceNumber) != strings.TrimSpace(inv.InvoiceNumber) {
 return fmt.Errorf("%w: numero facture PDF (%s) != XML (%s)", ErrCoherenceMismatch, pdfData.InvoiceNumber, inv.InvoiceNumber)
