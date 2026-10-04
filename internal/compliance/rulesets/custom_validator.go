@@ -8,18 +8,18 @@ import (
 )
 
 // BusinessRule représente une fonction de contrôle unitaire sur une facture canonique.
-type BusinessRule func(inv *canonical.Invoice) error
+type BusinessRule func(inv *canonical.CanonicalInvoice) error
 
 // CustomValidator définit le contrat d'extension pour les règles de gestion spécifiques aux clients/tenants.
 type CustomValidator interface {
-Validate(ctx context.Context, tenantID string, inv *canonical.Invoice) []error
+Validate(ctx context.Context, tenantID string, inv *canonical.CanonicalInvoice) []error
 }
 
 // NoopValidator est l'implémentation neutre par défaut (aucun contrôle spécifique supplémentaire).
 type NoopValidator struct{}
 
 // Validate renvoie toujours nil.
-func (n *NoopValidator) Validate(_ context.Context, _ string, _ *canonical.Invoice) []error {
+func (n *NoopValidator) Validate(_ context.Context, _ string, _ *canonical.CanonicalInvoice) []error {
 return nil
 }
 
@@ -44,7 +44,7 @@ r.rules[tenantID] = append(r.rules[tenantID], rule)
 }
 
 // Validate exécute toutes les règles enregistrées pour le tenant spécifié.
-func (r *RegistryValidator) Validate(_ context.Context, tenantID string, inv *canonical.Invoice) []error {
+func (r *RegistryValidator) Validate(_ context.Context, tenantID string, inv *canonical.CanonicalInvoice) []error {
 if inv == nil {
 return []error{fmt.Errorf("facture inexistante")}
 }
