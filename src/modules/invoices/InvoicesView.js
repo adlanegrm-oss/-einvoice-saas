@@ -1,114 +1,95 @@
 ﻿import { can, PERMISSIONS } from '../../services/policyEngine.js';
-import { logAuditEvent } from '../../services/auditLogger.js';
+import { auditLogger } from '../../services/auditLogger.js';
+import { InvoiceCreateModal } from './InvoiceCreateModal.js';
 
-export let INVOICES_DATA = [
-  {
-    id: "INV-2026-00125",
-    client: "TechCorp Global SAS",
-    establishmentId: "EST-01",
-    establishmentName: "Agence Paris Nord",
-    createdBy: "usr_001",
-    date: "2026-10-04",
-    amountHT: 12500.00,
-    vatAmount: 2500.00,
-    amountTTC: 15000.00,
-    status: "PENDING_VALIDATION",
-    complianceFormat: "Factur-X (EN 16931 Extended)"
-  },
-  {
-    id: "INV-2026-00124",
-    client: "Logistique Moderne SARL",
-    establishmentId: "EST-02",
-    establishmentName: "Agence Lyon Centre",
-    createdBy: "usr_002",
-    date: "2026-10-02",
-    amountHT: 4200.00,
-    vatAmount: 840.00,
-    amountTTC: 5040.00,
-    status: "VALIDATED",
-    complianceFormat: "UBL 2.1 (CIUS-FR)"
-  },
-  {
-    id: "INV-2026-00123",
-    client: "Solutions IT Europe",
-    establishmentId: "EST-01",
-    createdBy: "usr_001",
-    date: "2026-09-28",
-    amountHT: 8900.00,
-    vatAmount: 1780.00,
-    amountTTC: 10680.00,
-    status: "ISSUED",
-    complianceFormat: "CII (D16B)"
+export class InvoicesView {
+  constructor(appContext) {
+    this.ctx = appContext;
+    this.invoices = [
+      { id: 'INV-2026-001', establishmentId: 'est-paris', customerId: 'cust-acme', amount: 14400.00, status: 'VALIDATED', pdpRoute: 'CHORUS_PRO', date: '2026-10-01' },
+      { id: 'INV-2026-002', establishmentId: 'est-lyon', customerId: 'cust-globex', amount: 3250.50, status: 'PENDING_VALIDATION', pdpRoute: 'PEPPOL_FR', date: '2026-10-03' },
+      { id: 'INV-2026-003', establishmentId: 'est-paris', customerId: 'cust-acme', amount: 890.00, status: 'ISSUED', pdpRoute: 'CHORUS_PRO', date: '2026-09-28' },
+    ];
   }
-];
 
-export function renderInvoicesView(currentUser) {
-  const allowedInvoices = INVOICES_DATA.filter(inv => can(currentUser, PERMISSIONS.INVOICE_READ, inv));
+  render() {
+    const container = document.createElement('div');
+    container.className = 'module-view';
 
-  const rows = allowedInvoices.map(inv => {
-    const canValidate = can(currentUser, PERMISSIONS.INVOICE_VALIDATE, inv) && inv.status === 'PENDING_VALIDATION';
-    const canIssue = can(currentUser, PERMISSIONS.INVOICE_ISSUE, inv) && inv.status === 'VALIDATED';
-    const canCancel = can(currentUser, PERMISSIONS.INVOICE_CANCEL, inv) && inv.status !== 'CANCELLED';
+    const canCreate = can(this.ctx.user, PERMISSIONS.INVOICE_CREATE);
 
-    let statusBadge = "badge-draft";
-    if (inv.status === "VALIDATED") statusBadge = "badge-valid";
-    if (inv.status === "ISSUED") statusBadge = "badge-transit";
-    if (inv.status === "CANCELLED") statusBadge = "badge-rejected";
+    container.innerHTML = `
+      <div class="module-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <div>
+          <h2>Gestion des Factures Électroniques</h2>
+          <p class="text-muted">Conformité EN 16931 & CIUS-FR — Cycle de vie & Machine d'états</p>
+        </div>
+        ${canCreate ? '<button class="btn btn-primary" id="btn-open-create-invoice">+ Nouvelle Facture</button>' : ''}
+      </div>
 
-    return `
-      <tr>
-        <td><b>${inv.id}</b></td>
-        <td>${inv.client}</td>
-        <td><span style="font-size:0.75rem; color:var(--text-secondary);">${inv.establishmentName || inv.establishmentId}</span></td>
-        <td>${inv.amountTTC.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
-        <td><span class="badge ${statusBadge}">${inv.status}</span></td>
-        <td><code style="font-size:0.75rem;">${inv.complianceFormat}</code></td>
-        <td style="display:flex; gap:6px;">
-          ${canValidate ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="window.transitionInvoice('${inv.id}', 'VALIDATED')">Valider</button>` : ''}
-          ${canIssue ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem; background:#10b981;" onclick="window.transitionInvoice('${inv.id}', 'ISSUED')">Émettre PDP</button>` : ''}
-          ${canCancel ? `<button class="btn btn-subtle" style="padding:4px 8px; font-size:0.75rem; color:#dc2626;" onclick="window.transitionInvoice('${inv.id}', 'CANCELLED')">Annuler</button>` : ''}
+      <div class="table-container">
+        <table class="data-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th>Identifiant</th>
+              <th>Établissement</th>
+              <th>Montant TTC</th>
+              <th>Statut</th>
+              <th>Acheminement</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="invoices-tbody">
+            ${this.renderRows()}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    this.bindEvents(container);
+    return container;
+  }
+
+  renderRows() {
+    return this.invoices.map(inv => `
+      <tr style="border-bottom:1px solid #e2e8f0;">
+        <td style="font-weight:600;">${inv.id}</td>
+        <td>${inv.establishmentId}</td>
+        <td>${inv.amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
+        <td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td>
+        <td><code>${inv.pdpRoute}</code></td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick="alert('Audit logs de la facture ${inv.id}')">Audit</button>
         </td>
       </tr>
-    `;
-  }).join('');
+    `).join('');
+  }
 
-  return `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
-      <div>
-        <h2 style="font-size:1.4rem; font-weight:700;">Cycle de Vie de la Facturation</h2>
-        <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:4px;">
-          Filtre de scope actif : <b>${currentUser.role}</b> (${ROLES_DEFINITION[currentUser.role]?.scope || 'Direct'})
-        </p>
-      </div>
-      ${can(currentUser, PERMISSIONS.INVOICE_CREATE) ? `<button class="btn btn-primary">+ Nouvelle Facture</button>` : `<span class="badge badge-draft">Création non autorisée</span>`}
-    </div>
+  bindEvents(container) {
+    container.querySelector('#btn-open-create-invoice')?.addEventListener('click', () => {
+      const dummyEstablishments = [
+        { id: 'est-paris', name: 'Siège Social Paris', siret: '80943210900012' },
+        { id: 'est-lyon', name: 'Succursale Rhône-Alpes', siret: '80943210900020' }
+      ];
+      const dummyCustomers = [
+        { id: 'cust-acme', name: 'ACME Corporation SA', siren: '552032541' },
+        { id: 'cust-globex', name: 'Globex Logistics SARL', siren: '912845672' }
+      ];
 
-    <!-- Machine d'États Visuelle -->
-    <div class="card" style="display:flex; justify-content:space-around; align-items:center; padding:12px; font-size:0.8rem;">
-      <span style="color:var(--text-secondary);">1. BROUILLON</span> ➔
-      <span style="color:#b45309; font-weight:600;">2. À VALIDER</span> ➔
-      <span style="color:#15803d; font-weight:600;">3. VALIDÉE</span> ➔
-      <span style="color:#0369a1; font-weight:600;">4. ÉMISE / PDP</span> ➔
-      <span style="color:var(--text-secondary);">5. PAYÉE</span>
-    </div>
+      const modalInstance = new InvoiceCreateModal({
+        establishments: dummyEstablishments,
+        customers: dummyCustomers,
+        onSave: (newInvoice) => {
+          this.invoices.unshift(newInvoice);
+          const tbody = container.querySelector('#invoices-tbody');
+          if (tbody) tbody.innerHTML = this.renderRows();
+        },
+        onClose: () => {
+          document.getElementById('invoice-create-modal')?.remove();
+        }
+      });
 
-    <div class="card">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>N° Facture</th>
-            <th>Client</th>
-            <th>Établissement</th>
-            <th>Total TTC</th>
-            <th>Statut Workflow</th>
-            <th>Norme Électronique</th>
-            <th>Actions Habilitées</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.length > 0 ? rows : `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-secondary);">Aucune facture accessible pour ce profil et ce périmètre d'établissement.</td></tr>`}
-        </tbody>
-      </table>
-    </div>
-  `;
+      document.body.appendChild(modalInstance.render());
+    });
+  }
 }
