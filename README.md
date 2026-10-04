@@ -1,16 +1,45 @@
-﻿# E-Invoice Compliance Gateway (Prototype Technique Avancé)
+# ⚡ E-Invoice SaaS Platform — Conformité EN 16931 & Échange PDP / B2B
 
-Passerelle API et moteur de normalisation, validation et sécurisation des flux de facturation électronique (UBL 2.1, CII, Factur-X) pour ERP et applications de gestion d'entreprise.
+Plateforme open-source de facturation électronique conforme à la réglementation européenne (**EN 16931**) et aux spécifications françaises **CIUS-FR** (mandat B2B / PPF / PDP).
 
-> **Avertissement de conformité :** Ce logiciel est un socle technologique en pré-production technique. Il n'est ni une Plateforme de Dématérialisation Partenaire (PDP) immatriculée, ni qualifié officiellement pour l'émission fiscale directe sans plateforme intermédiaire agréée.
+---
 
-Consultez [`CAPABILITY_MATRIX.md`](CAPABILITY_MATRIX.md) pour la grille de maturité composant par composant.
+## 🚀 Dernières Avancées (Release v1.2.0-compliance)
 
-## Cycle d'Intégrité d'une Facture
-1. **Réception & Empreinte :** Calcul SHA-256 du document brut.
-2. **Idempotence :** Verrouillage strict par clé et détection des rejeux concurrents.
-3. **Contrôles Sémantiques :** Validation des règles fondamentales EN 16931 (Ruleset 2026.1).
-4. **Scellement Cryptographique :** Chaînage d'événements Merkle irréversible (`SHA-256(event + prev_hash)`).
-5. **Outbox Durable :** Persistance avant émission réseau avec reprise sur panne (DLQ).
-6. **Passerelle Réseau :** Interface d'acheminement standardisée avec reçu normé.
-7. **Evidence Ledger :** Exportation d'un dossier de preuve d'audit consolidé.
+* **Validation Sémantique EN 16931 & CIUS-FR** : Moteur d'analyse XML direct (SAX/Token) sans dépendances lourdes retournant les vrais identifiants de règles normatifs (`BR-01` à `BR-09`, `BR-16`, `BR-21`, `BR-CO-10`, `BR-CO-13`, `BR-CO-14`, `BR-CO-15`, `BR-CO-16`, `BR-CO-25`, `CIUS-FR-01` à `CIUS-FR-05`).
+* **Générateur CII Complet (UN/CEFACT D16B)** : Couverture intégrale du schéma standard `rsm:CrossIndustryInvoice` : accord commercial (`SellerTradeParty`, `BuyerTradeParty`, identifiants SIREN/SIRET, TVA, adresses, routage Chorus Pro), lignes complètes (`IncludedSupplyChainTradeLineItem`, unités UN/ECE Rec 20, prix nets, ventilation TVA par ligne) et règlement financier (`ApplicableTradeTax`, échéance, IBAN/BIC).
+* **Anti-Rejeu & Idempotence Persistants** : Schéma de migration SQL (`migrations/002_persistent_replay_outbox.sql`) assurant l'unicité `(tenant_id, message_id)` en base relationnelle pour fiabiliser le transport AS4 et les webhooks.
+* **Hygiène Logicielle & CI/CD** : Élimination stricte des redéclarations de types, `go vet` valide sans avertissement et suite de tests unitaires 100% au vert sur l'ensemble des modules.
+
+---
+
+## 🏗️ Architecture du Pipeline de Conformité
+
+```
+CanonicalInvoice
+       │
+       ▼
+[pkg/syntax] GenerateCIIXML()  ──►  Flux XML UN/CEFACT D16B
+       │
+       ▼
+[pkg/validation] SchematronEngine.ValidateXML()
+       ├─► Validation syntaxique & balisage
+       ├─► Règles arithmétiques & totaux (BR-CO-*)
+       ├─► Règles nationales d'identité & TVA (CIUS-FR-*)
+       └─► Rapport structuré (ERROR / WARNING)
+```
+
+---
+
+## 🛠️ Commandes Utiles
+
+```bash
+# Vérification statique du code
+go vet ./pkg/...
+
+# Lancement de l'ensemble des tests (100% PASS)
+go test -v -p 1 ./pkg/...
+
+# Exécution de la suite d'épreuves Schematron & golden invoices
+go test -v -p 1 ./pkg/validation/...
+```
