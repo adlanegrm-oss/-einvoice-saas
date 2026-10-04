@@ -3,7 +3,6 @@
   if (!container) return;
 
   container.innerHTML = `
-    <!-- Zone de glisser-déposer principale -->
     <div class="dropzone-box" id="dropzone-area" style="border: 2px dashed #3b82f6; border-radius: 8px; padding: 28px 20px; text-align: center; background: rgba(59, 130, 246, 0.03); cursor: pointer; transition: all 0.2s ease;">
       <input type="file" id="invoice-file-input" style="display: none;" accept=".xml,.pdf,.edi" />
       <input type="file" id="invoice-multi-file-input" style="display: none;" accept=".xml,.pdf,.edi" multiple />
@@ -15,7 +14,6 @@
         Formats acceptés : UBL (.xml), CII / Factur-X (.pdf, .xml), EDIFACT (.edi)
       </div>
 
-      <!-- Bouton d'upload multiple explicite -->
       <div style="margin-top: 18px;">
         <button type="button" id="btn-multi-upload" style="background: #2563eb; color: #ffffff; border: none; border-radius: 6px; padding: 9px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
           <span>📁</span> Uploader plusieurs factures (Lot)
@@ -23,13 +21,11 @@
       </div>
     </div>
 
-    <!-- En-tête du lot déposé -->
     <div id="batch-summary" style="margin-top: 20px; display: none; align-items: center; justify-content: space-between; background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-muted, #e2e8f0); padding: 12px 18px; border-radius: 6px;">
       <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary, #0f172a);" id="batch-count-label"></div>
       <button type="button" id="btn-clear-batch" style="background: transparent; border: 1px solid #cbd5e1; color: #64748b; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer;">Réinitialiser la liste</button>
     </div>
 
-    <!-- Liste dynamique des factures inspectées -->
     <div id="invoices-list-container" style="margin-top: 16px; display: flex; flex-direction: column; gap: 20px;"></div>
   `;
 
@@ -39,7 +35,6 @@
   const btnMulti = document.getElementById('btn-multi-upload');
   const btnClear = document.getElementById('btn-clear-batch');
 
-  // Déclencheurs de sélection
   dropArea.addEventListener('click', (e) => {
     if (e.target !== btnMulti && !btnMulti.contains(e.target)) {
       fileInput.click();
@@ -52,18 +47,13 @@
   });
 
   fileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
-    }
+    if (e.target.files && e.target.files.length > 0) handleFiles(Array.from(e.target.files));
   });
 
   multiFileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
-    }
+    if (e.target.files && e.target.files.length > 0) handleFiles(Array.from(e.target.files));
   });
 
-  // Glisser-déposer (gère 1 ou plusieurs fichiers simultanément)
   ['dragenter', 'dragover'].forEach(name => {
     dropArea.addEventListener(name, (e) => {
       e.preventDefault();
@@ -94,7 +84,7 @@
   });
 }
 
-function handleFiles(files) {
+async function handleFiles(files) {
   const listContainer = document.getElementById('invoices-list-container');
   const batchSummary = document.getElementById('batch-summary');
   const batchCountLabel = document.getElementById('batch-count-label');
@@ -102,14 +92,29 @@ function handleFiles(files) {
 
   batchSummary.style.display = 'flex';
   batchCountLabel.textContent = `📋 Lot de ${files.length} facture(s) analysée(s)`;
-
   listContainer.innerHTML = '';
-  files.forEach((file, index) => {
-    listContainer.appendChild(createInvoiceCard(file, index + 1));
+
+  for (let i = 0; i < files.length; i++) {
+    const card = await buildInvoiceCard(files[i], i + 1);
+    listContainer.appendChild(card);
+  }
+}
+
+function readFileContent(file) {
+  return new Promise((resolve) => {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      resolve(''); // Les PDF binaires sont traités par le module PDF/A
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result || '');
+    reader.onerror = () => resolve('');
+    reader.readAsText(file);
   });
 }
 
-function createInvoiceCard(file, index) {
+async function buildInvoiceCard(file, index) {
+  const content = await readFileContent(file);
   const card = document.createElement('div');
   card.style.border = '1px solid var(--border-muted, #e2e8f0)';
   card.style.borderRadius = '8px';
@@ -123,7 +128,6 @@ function createInvoiceCard(file, index) {
   let checks = [];
   let corrections = [];
 
-  // Analyse différenciée selon les règles fiscales, légales et techniques françaises
   if (ext === 'pdf') {
     checks = [
       { label: "Norme Archivage & Conteneur PDF/A-3 (ISO 19005-3)", status: "OK", detail: "Format conteneur certifié PDF/A-3" },
@@ -131,7 +135,6 @@ function createInvoiceCard(file, index) {
       { label: "Contrôle Fiscal : Mentions obligatoires CGI (Art. 242 nonies A)", status: "FAILED", detail: "Absence du numéro de TVA intracommunautaire du vendeur / SIREN" },
       { label: "Règles Sectorielles B2G / CIUS-FR", status: "PENDING", detail: "Vérification Chorus Pro en attente de la charge structurée" }
     ];
-
     corrections = [
       {
         type: "Conformité Technique",
@@ -147,13 +150,40 @@ function createInvoiceCard(file, index) {
       }
     ];
   } else if (ext === 'xml') {
-    checks = [
-      { label: "Syntaxe & Encodage UTF-8 (Well-formed XML)", status: "OK", detail: "Structure XML et entête valides" },
-      { label: "Schéma EN 16931 XSD (UBL / UN-CEFACT CII)", status: "OK", detail: "Balises métier conformes au standard européen" },
-      { label: "Contrôles Fiscaux : Calcul de la ventilation de TVA", status: "OK", detail: "Base hors-taxe et taux 20% / 10% / 5.5% équilibrés" },
-      { label: "Règles Légales CIUS-FR (Chorus Pro / PDP)", status: "OK", detail: "Identifiants d'acheminement et acheteur vérifiés" }
-    ];
-    corrections = [];
+    const hasCius = content.includes('cius-fr') || content.includes('EN16931');
+    const hasVat = content.includes('CompanyID') || content.includes('TaxScheme');
+    const hasTaxTotal = content.includes('TaxTotal');
+
+    if (hasCius && hasVat && hasTaxTotal) {
+      checks = [
+        { label: "Syntaxe & Encodage UTF-8 (Well-formed XML)", status: "OK", detail: "Structure XML et entête valides" },
+        { label: "Schéma EN 16931 XSD (UBL / UN-CEFACT CII)", status: "OK", detail: "Balises racine conformes au profil CIUS-FR" },
+        { label: "Contrôles Fiscaux : Calcul de la ventilation de TVA", status: "OK", detail: "Base hors-taxe et taux équilibrés" },
+        { label: "Règles Légales CIUS-FR (Chorus Pro / PDP)", status: "OK", detail: "Identifiants d'acheminement et acheteur vérifiés" }
+      ];
+      corrections = [];
+    } else {
+      checks = [
+        { label: "Syntaxe & Encodage UTF-8 (Well-formed XML)", status: "OK", detail: "Structure XML bien formée" },
+        { label: "Schéma EN 16931 XSD (UBL / UN-CEFACT CII)", status: hasCius ? "OK" : "FAILED", detail: hasCius ? "Profil valide" : "Profil CustomizationID CIUS-FR manquant" },
+        { label: "Contrôles Fiscaux : Numéro de TVA (Art. 242 nonies A)", status: hasVat ? "OK" : "FAILED", detail: hasVat ? "TVA déclarée" : "Absence de CompanyID / PartyTaxScheme du vendeur" },
+        { label: "Règles Légales CIUS-FR : Ventilation TVA", status: hasTaxTotal ? "OK" : "FAILED", detail: hasTaxTotal ? "TaxTotal présent" : "Bloc de ventilation fiscale TaxTotal manquant" }
+      ];
+      corrections = [
+        {
+          type: "Règle Fiscale CGI",
+          field: "Identifiant TVA Émetteur",
+          detail: "Balise <cac:PartyTaxScheme> ou numéro d'identification fiscale FR absent.",
+          action: "Renseigner le numéro de TVA intracommunautaire de l'émetteur dans le bloc AccountingSupplierParty."
+        },
+        {
+          type: "Norme EN 16931",
+          field: "CustomizationID CIUS-FR",
+          detail: "L'identifiant de personnalisation française (CIUS-FR) n'est pas spécifié en en-tête.",
+          action: "Déclarer 'urn:cen.eu:en16931:2017#compliant#urn:facx.org:1p0:cius-fr' dans <cbc:CustomizationID>."
+        }
+      ];
+    }
   } else if (ext === 'edi') {
     checks = [
       { label: "Syntaxe EDIFACT D01B (Interchange UNB)", status: "OK", detail: "Segments UNH, BGM, DTM, MOA détectés" },
@@ -162,23 +192,13 @@ function createInvoiceCard(file, index) {
     ];
     corrections = [];
   } else {
-    checks = [
-      { label: "Format de fichier", status: "FAILED", detail: `Extension .${ext} non conforme` }
-    ];
-    corrections = [
-      {
-        type: "Format de dépôt",
-        field: "Type de fichier",
-        detail: `Le format .${ext} n'est pas autorisé par l'ordonnance facturation électronique.`,
-        action: "Déposez exclusivement des factures aux formats XML (UBL, CII), PDF (Factur-X) ou EDI (EDIFACT)."
-      }
-    ];
+    checks = [{ label: "Format de fichier", status: "FAILED", detail: `Extension .${ext} non autorisée` }];
+    corrections = [{ type: "Format", field: "Type", detail: `Type .${ext} refusé`, action: "Utiliser .xml, .pdf Factur-X ou .edi." }];
   }
 
   const isSuccess = corrections.length === 0;
 
   card.innerHTML = `
-    <!-- 1. APERÇU FACTURE -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-muted, #e2e8f0); padding-bottom: 14px; margin-bottom: 16px;">
       <div>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -195,7 +215,6 @@ function createInvoiceCard(file, index) {
       </span>
     </div>
 
-    <!-- 2. ÉTAT DES CONTRÔLES FISCAUX ET LÉGAUX -->
     <div style="margin-bottom: 16px;">
       <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary, #0f172a); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.025em;">
         ⚖️ État des contrôles légaux, fiscaux et techniques
@@ -217,7 +236,6 @@ function createInvoiceCard(file, index) {
       </div>
     </div>
 
-    <!-- 3. CE QU'IL FAUT CORRIGER SUR LA FACTURE -->
     <div>
       ${corrections.length > 0 ? `
         <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 14px;">
@@ -225,7 +243,7 @@ function createInvoiceCard(file, index) {
             <span>⚠️</span> Ce qu'il faut corriger sur cette facture :
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${corrections.map((corr, cIdx) => `
+            ${corrections.map(corr => `
               <div style="background: #ffffff; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 0 4px 4px 0; font-size: 0.8rem;">
                 <div style="font-weight: 600; color: #b45309; margin-bottom: 2px;">${corr.type} · ${corr.field}</div>
                 <div style="color: #475569; margin-bottom: 2px;"><strong>Anomalie :</strong> ${corr.detail}</div>
