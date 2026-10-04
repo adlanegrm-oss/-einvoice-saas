@@ -1,7 +1,8 @@
-import { ROLES_CONFIG } from './config/roles.js';
+﻿import { ROLES_CONFIG } from './config/roles.js';
 import { renderAppShell } from './components/AppShell.js';
 import { renderAdminUsersView } from './views/AdminUsersView.js';
 import { renderGenericView } from './views/GenericView.js';
+import { initDropZone } from './components/DropZone.js';
 
 let state = {
   role: 'CLIENT',
@@ -13,16 +14,25 @@ function render() {
   document.documentElement.setAttribute('data-role', state.role);
   document.documentElement.setAttribute('data-theme', state.theme);
 
+  const currentRoleCfg = ROLES_CONFIG[state.role];
+  const currentRoute = currentRoleCfg.routes.find(r => r.id === state.view) || currentRoleCfg.routes[0];
+
   let viewHtml = '';
   if (state.role === 'ADMIN' && state.view === 'admin-users') {
     viewHtml = renderAdminUsersView();
   } else {
-    viewHtml = renderGenericView(state.role, state.view);
+    // Ordre aligné: moduleKey, moduleTitle, roleKey, roleCfg
+    viewHtml = renderGenericView(state.view, currentRoute.label, state.role, currentRoleCfg);
   }
 
   document.getElementById('app').innerHTML = renderAppShell(state.role, state.view, viewHtml);
 
-  // Événements
+  // Initialisation post-rendu pour le dépôt client
+  if (state.role === 'CLIENT' && state.view === 'client-upload') {
+    initDropZone('dropzone-root');
+  }
+
+  // Événements de navigation
   document.getElementById('role-selector').addEventListener('change', (e) => {
     state.role = e.target.value;
     state.view = ROLES_CONFIG[state.role].routes[0].id;
