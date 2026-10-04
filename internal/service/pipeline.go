@@ -9,12 +9,12 @@ import (
 "strings"
 "time"
 
+"github.com/adlanegrm-oss/einvoice-saas/internal/compliance/en16931"
 "github.com/adlanegrm-oss/einvoice-saas/internal/compliance/rulesets"
 "github.com/adlanegrm-oss/einvoice-saas/internal/invoice"
 "github.com/adlanegrm-oss/einvoice-saas/internal/lifecycle/status"
 "github.com/adlanegrm-oss/einvoice-saas/internal/repository"
 "github.com/adlanegrm-oss/einvoice-saas/internal/routing/dispatcher"
-"github.com/adlanegrm-oss/einvoice-saas/internal/validator/en16931"
 )
 
 type InvoicePipeline struct {
