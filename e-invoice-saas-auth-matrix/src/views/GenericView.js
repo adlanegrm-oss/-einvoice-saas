@@ -1,7 +1,12 @@
 ﻿import { initDropZone } from '../components/DropZone.js';
 
 export function renderGenericView(moduleKey, moduleTitle, roleKey, roleCfg) {
-  const isClientUpload = moduleKey === 'client-upload';
+  const isClientUpload = 
+    moduleKey === 'client-upload' || 
+    moduleKey === 'CLIENT' || 
+    roleKey === 'CLIENT' || 
+    (moduleTitle && moduleTitle.toLowerCase().includes('dépôt'));
+
   const baseRoute = (roleCfg && roleCfg.baseRoute) ? roleCfg.baseRoute : (roleKey ? roleKey.toLowerCase() : 'client');
 
   return `
@@ -22,8 +27,17 @@ export function renderGenericView(moduleKey, moduleTitle, roleKey, roleCfg) {
   `;
 }
 
-export function bindGenericViewEvents(moduleKey) {
-  if (moduleKey === 'client-upload') {
-    initDropZone('dropzone-root');
+export function bindGenericViewEvents(moduleKey, roleKey, moduleTitle) {
+  const isClientUpload = 
+    moduleKey === 'client-upload' || 
+    moduleKey === 'CLIENT' || 
+    roleKey === 'CLIENT' || 
+    (moduleTitle && moduleTitle.toLowerCase().includes('dépôt'));
+
+  if (isClientUpload) {
+    // Petit délai d'un tick d'animation pour garantir la présence de dropzone-root dans le DOM
+    requestAnimationFrame(() => {
+      initDropZone('dropzone-root');
+    });
   }
 }
