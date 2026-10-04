@@ -14,9 +14,9 @@ func newRepo(t *testing.T) *SQLiteInvoiceRepository {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
-		t.Fatalf("Impossible d'ouvrir la base en mÃ©moire : %v", err)
+		t.Fatalf("Impossible d'ouvrir la base en mémoire : %v", err)
 	}
-	db.SetMaxOpenConns(1) // ":memory:" est propre Ã  chaque connexion
+	db.SetMaxOpenConns(1) // ":memory:" est propre à chaque connexion
 	t.Cleanup(func() { db.Close() })
 
 	repo, err := NewSQLiteInvoiceRepository(db)
@@ -46,13 +46,13 @@ func TestSQLiteInvoiceRepository(t *testing.T) {
 	}
 	invoices, err := repo.GetAll()
 	if err != nil {
-		t.Fatalf("Erreur lors de la rÃ©cupÃ©ration SQLite : %v", err)
+		t.Fatalf("Erreur lors de la récupération SQLite : %v", err)
 	}
 	if len(invoices) != 1 {
-		t.Fatalf("Nombre de factures incorrect : attendu 1, reÃ§u %d", len(invoices))
+		t.Fatalf("Nombre de factures incorrect : attendu 1, reçu %d", len(invoices))
 	}
 	if invoices[0].Number != "INV-2026-001" {
-		t.Errorf("NumÃ©ro de facture incorrect : %s", invoices[0].Number)
+		t.Errorf("Numéro de facture incorrect : %s", invoices[0].Number)
 	}
 }
 
@@ -64,7 +64,7 @@ func TestOwnerIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := repo.SaveFor("t-b", sample("B1", "F-1", day)); err != nil {
-		t.Fatalf("le mÃªme numÃ©ro doit Ãªtre permis pour un autre propriÃ©taire : %v", err)
+		t.Fatalf("le même numéro doit être permis pour un autre propriétaire : %v", err)
 	}
 
 	listA, _ := repo.ListFor("t-a")
@@ -72,14 +72,14 @@ func TestOwnerIsolation(t *testing.T) {
 		t.Errorf("t-a ne doit voir que sa facture : %+v", listA)
 	}
 	if _, err := repo.GetFor("B1", "t-a"); !errors.Is(err, ErrNotFound) {
-		t.Errorf("t-a ne doit pas lire la facture de t-b, erreur reÃ§ue : %v", err)
+		t.Errorf("t-a ne doit pas lire la facture de t-b, erreur reçue : %v", err)
 	}
 	if inv, err := repo.GetFor("B1", ""); err != nil || inv.ID != "B1" {
 		t.Errorf("l'administrateur (owner vide) doit tout lire : %v", err)
 	}
 	all, _ := repo.ListFor("")
 	if len(all) != 2 {
-		t.Errorf("attendu 2 factures pour l'administrateur, reÃ§u %d", len(all))
+		t.Errorf("attendu 2 factures pour l'administrateur, reçu %d", len(all))
 	}
 }
 
@@ -90,10 +90,10 @@ func TestDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := repo.SaveFor("t-a", sample("A1", "F-2", day)); !errors.Is(err, ErrDuplicate) {
-		t.Errorf("identifiant en double : ErrDuplicate attendue, reÃ§ue %v", err)
+		t.Errorf("identifiant en double : ErrDuplicate attendue, reçue %v", err)
 	}
 	if err := repo.SaveFor("t-a", sample("A2", "F-1", day)); !errors.Is(err, ErrDuplicate) {
-		t.Errorf("numÃ©ro en double : ErrDuplicate attendue, reÃ§ue %v", err)
+		t.Errorf("numéro en double : ErrDuplicate attendue, reçue %v", err)
 	}
 }
 
@@ -116,9 +116,9 @@ func TestDailyReport(t *testing.T) {
 	}
 	all, _ := repo.GetDailyReport("2026-09-24")
 	if all.TotalInvoices != 3 {
-		t.Errorf("rapport global : attendu 3 factures, reÃ§u %d", all.TotalInvoices)
+		t.Errorf("rapport global : attendu 3 factures, reçu %d", all.TotalInvoices)
 	}
 	if _, err := repo.DailyReportFor("", "24/09/2026"); err == nil {
-		t.Error("une date au mauvais format doit Ãªtre refusÃ©e")
+		t.Error("une date au mauvais format doit être refusée")
 	}
 }

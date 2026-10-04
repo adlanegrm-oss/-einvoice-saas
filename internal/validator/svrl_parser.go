@@ -3,7 +3,6 @@ package validator
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -11,9 +10,9 @@ import (
 	"time"
 )
 
-// SVRLOutput modélise le rapport standardisé ISO Schematron (SVRL)
+// SVRLOutput modelise le rapport standardise ISO Schematron (SVRL)
 type SVRLOutput struct {
-	XMLName       xml.Name       `xml:"schematron-output"`
+	XMLName       xml.Name            `xml:"schematron-output"`
 	FailedAsserts []SVRLFailedAssert `xml:"failed-assert"`
 }
 
@@ -41,11 +40,11 @@ func NewSchematronSidecarClient(endpointURL string) *SchematronSidecarClient {
 	}
 }
 
-// HTTP422ValidationError structure standardisée retournée pour les rejets PDP/PPF
+// HTTP422ValidationError structure standardisee retournee pour les rejets PDP/PPF
 type HTTP422ValidationError struct {
-	Status  int                  `json:"status"`
-	Code    string               `json:"code"`
-	Message string               `json:"message"`
+	Status     int                   `json:"status"`
+	Code       string                `json:"code"`
+	Message    string                `json:"message"`
 	Violations []RuleViolationDetail `json:"violations"`
 }
 

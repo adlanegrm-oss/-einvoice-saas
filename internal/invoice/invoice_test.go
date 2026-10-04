@@ -20,13 +20,13 @@ func TestValidateInvoice(t *testing.T) {
 				Customer:  Party{Name: "Client A"},
 				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
 				Items: []InvoiceItem{
-					{Description: "DÃ©veloppement Go", Quantity: 2, UnitPrice: NewMoneyFromFloat(100.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
+					{Description: "Développement Go", Quantity: 2, UnitPrice: NewMoneyFromFloat(100.0, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20.0, 2, CurrencyEUR)},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "NumÃ©ro de facture manquant",
+			name: "Numéro de facture manquant",
 			invoice: Invoice{
 				Customer:  Party{Name: "Client B"},
 				IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC),
@@ -47,7 +47,7 @@ func TestValidateInvoice(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "QuantitÃ© invalide (<= 0)",
+			name: "Quantité invalide (<= 0)",
 			invoice: Invoice{
 				Number:    "INV-003",
 				Customer:  Party{Name: "Client D"},
@@ -83,17 +83,17 @@ func TestCalculateTotals(t *testing.T) {
 
 	err := inv.Validate()
 	if err != nil {
-		t.Fatalf("Validation Ã©chouÃ©e : %v", err)
+		t.Fatalf("Validation échouée : %v", err)
 	}
 
 	if inv.TotalHT.ToFloat() != 300.0 {
-		t.Errorf("TotalHT incorrect : reÃ§u %v, attendu 300.0", inv.TotalHT)
+		t.Errorf("TotalHT incorrect : reçu %v, attendu 300.0", inv.TotalHT)
 	}
 	if inv.TotalVAT.ToFloat() != 50.0 {
-		t.Errorf("TotalVAT incorrect : reÃ§u %v, attendu 50.0", inv.TotalVAT)
+		t.Errorf("TotalVAT incorrect : reçu %v, attendu 50.0", inv.TotalVAT)
 	}
 	if inv.TotalTTC.ToFloat() != 350.0 {
-		t.Errorf("TotalTTC incorrect : reÃ§u %v, attendu 350.0", inv.TotalTTC)
+		t.Errorf("TotalTTC incorrect : reçu %v, attendu 350.0", inv.TotalTTC)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestCalculateTotalsRounding(t *testing.T) {
 		t.Fatal(err)
 	}
 	if inv.TotalHT.ToFloat() != 0.5 || inv.TotalVAT.ToFloat() != 0.1 || inv.TotalTTC.ToFloat() != 0.6 {
-		t.Errorf("totaux arrondis attendus 0.5 / 0.1 / 0.6, reÃ§us %v / %v / %v", inv.TotalHT, inv.TotalVAT, inv.TotalTTC)
+		t.Errorf("totaux arrondis attendus 0.5 / 0.1 / 0.6, reçus %v / %v / %v", inv.TotalHT, inv.TotalVAT, inv.TotalTTC)
 	}
 }
 
@@ -121,20 +121,20 @@ func TestValidateRejectsAbnormalValues(t *testing.T) {
 			IssueDate: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC), Items: []InvoiceItem{{Description: "x", Quantity: 1, UnitPrice: NewMoneyFromFloat(10, 2, CurrencyEUR), VATRate: NewMoneyFromFloat(20, 2, CurrencyEUR)}}}
 	}
 	cases := map[string]func(*Invoice){
-		"TVA nÃ©gative":       func(i *Invoice) { i.Items[0].VATRate = NewMoney(-500, 2, CurrencyEUR) },
-		"TVA supÃ©rieure 100": func(i *Invoice) { i.Items[0].VATRate = NewMoney(25000, 2, CurrencyEUR) },
-		"prix nÃ©gatif":       func(i *Invoice) { i.Items[0].UnitPrice = NewMoney(-100, 2, CurrencyEUR) },
+		"TVA négative":       func(i *Invoice) { i.Items[0].VATRate = NewMoney(-500, 2, CurrencyEUR) },
+		"TVA supérieure 100": func(i *Invoice) { i.Items[0].VATRate = NewMoney(25000, 2, CurrencyEUR) },
+		"prix négatif":       func(i *Invoice) { i.Items[0].UnitPrice = NewMoney(-100, 2, CurrencyEUR) },
 		// float NaN non applicable sur int64 Money
 		// float Inf non applicable sur int64 Money
-		"numÃ©ro trop long": func(i *Invoice) { i.Number = strings.Repeat("9", 65) },
-		"numÃ©ro d'espaces": func(i *Invoice) { i.Number = "   " },
+		"numéro trop long": func(i *Invoice) { i.Number = strings.Repeat("9", 65) },
+		"numéro d'espaces": func(i *Invoice) { i.Number = "   " },
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
 			inv := base()
 			mutate(&inv)
 			if err := inv.Validate(); err == nil {
-				t.Error("une erreur de validation Ã©tait attendue")
+				t.Error("une erreur de validation était attendue")
 			}
 		})
 	}
