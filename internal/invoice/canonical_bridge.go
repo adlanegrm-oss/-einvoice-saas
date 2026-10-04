@@ -15,15 +15,16 @@ ID:            i.ID,
 InvoiceNumber: i.Number,
 Seller: canonical.Party{
 LegalEntityID: i.Seller.SIRET,
-TaxID:         i.Seller.VATNumber,
+TaxID:         i.Seller.VATID,
 },
 Buyer: canonical.Party{
 LegalEntityID: i.Customer.SIRET,
-TaxID:         i.Customer.VATNumber,
+TaxID:         i.Customer.VATID,
 },
 MonetaryTotals: canonical.MonetaryTotals{
-TaxExclusiveAmount: int64(i.TotalHT.ToFloat() * 100),
-TaxInclusiveAmount: int64(i.TotalTTC.ToFloat() * 100),
+NetHT:     int64(i.TotalHT.ToFloat() * 100),
+TaxAmount: int64(i.TotalVAT.ToFloat() * 100),
+GrossTTC:  int64(i.TotalTTC.ToFloat() * 100),
 },
 }
 

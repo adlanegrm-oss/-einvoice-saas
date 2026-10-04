@@ -67,18 +67,17 @@ Number:    "FA-2026-0001",
 Currency:  invoice.EUR,
 IssueDate: time.Now(),
 Seller: invoice.Party{
-Name:      "Fournisseur Test SAS",
-SIRET:     "12345678901234",
-VATNumber: "FR12345678901",
+Name:  "Fournisseur Test SAS",
+SIRET: "12345678901234",
+VATID: "FR12345678901",
 },
 Customer: invoice.Party{
-Name:      "Client Destinataire SAS",
-SIRET:     "98765432109876",
-VATNumber: "FR98765432109",
+Name:  "Client Destinataire SAS",
+SIRET: "98765432109876",
+VATID: "FR98765432109",
 },
 Items: []invoice.InvoiceItem{
 {
-ID:          "1",
 Description: "Prestation d'intégration SaaS",
 Quantity:    1,
 UnitPrice:   invoice.NewMoneyFromFloat(1000.0, 2, invoice.EUR),
@@ -102,10 +101,10 @@ sm := status.NewStateMachine()
 disp := dispatcher.NewDispatcher()
 
 reg := rulesets.NewRegistryValidator()
-// Règle spécifique Client M : Le numéro de facture doit contenir "CLIENTM"
+// Règle spécifique Client M : Le numéro de facture doit être FA-CLIENTM-2026
 reg.RegisterRule("CLIENT_M", func(inv *canonical.CanonicalInvoice) error {
 if inv.InvoiceNumber == "" || inv.InvoiceNumber != "FA-CLIENTM-2026" {
-return errors.New("BR-CLIENT-M-99: La facture doit impérativement porter le préfixe FA-CLIENTM-2026")
+return errors.New("BR-CLIENT-M-99: La facture doit impérativement porter le numéro FA-CLIENTM-2026")
 }
 return nil
 })
@@ -113,7 +112,7 @@ return nil
 pipeline := service.NewInvoicePipeline(repo, val, sm, disp).WithCustomValidator(reg)
 ctx := context.Background()
 
-// CAS 1 : Facture soumise par un client standard -> DOIT PASSER (pas bloqué par CLIENT_M)
+// CAS 1 : Facture soumise par un client standard -> DOIT PASSER (règles isolées)
 stdInv := createSampleValidInvoice()
 stdInv.ID = "INV-STD-01"
 stdInv.Number = "FA-STD-0001"
@@ -125,10 +124,10 @@ if resStd.Status != status.StateTransmitted {
 t.Fatalf("attendu StateTransmitted pour standard, reçu %s (erreur: %s)", resStd.Status, resStd.Error)
 }
 
-// CAS 2 : Même facture soumise par CLIENT_M -> DOIT ÉCHOUER (règle spécifique enfreinte)
+// CAS 2 : Facture non conforme aux exigences du CLIENT_M -> DOIT ÉCHOUER (rejet et audit sans émission)
 mInvInvalid := createSampleValidInvoice()
 mInvInvalid.ID = "INV-M-FAIL-01"
-mInvInvalid.Number = "FA-STD-0001" // Ne respecte pas FA-CLIENTM-2026
+mInvInvalid.Number = "FA-STD-0001"
 resM, err := pipeline.ProcessAndEmit(ctx, "CLIENT_M", mInvInvalid)
 if err != nil {
 t.Fatalf("l'échec de règle ne doit pas faire paniquer le pipeline : %v", err)
@@ -136,11 +135,11 @@ t.Fatalf("l'échec de règle ne doit pas faire paniquer le pipeline : %v", err)
 if resM.Status != status.StateRejected {
 t.Fatalf("attendu StateRejected pour CLIENT_M invalide, reçu %s", resM.Status)
 }
-if resM.Error != "BR-CLIENT-M-99: La facture doit impérativement porter le préfixe FA-CLIENTM-2026" {
+if resM.Error != "BR-CLIENT-M-99: La facture doit impérativement porter le numéro FA-CLIENTM-2026" {
 t.Fatalf("message d'erreur inattendu pour CLIENT_M: %s", resM.Error)
 }
 
-// CAS 3 : Facture conforme soumise par CLIENT_M -> DOIT PASSER
+// CAS 3 : Facture conforme aux exigences du CLIENT_M -> DOIT PASSER
 mInvValid := createSampleValidInvoice()
 mInvValid.ID = "INV-M-OK-01"
 mInvValid.Number = "FA-CLIENTM-2026"
