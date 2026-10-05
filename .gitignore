@@ -27,3 +27,13 @@ data/archives/**/*.log
 node_modules/
 .vite/
 e-invoice-saas-auth-matrix/dist/
+
+# Environnement et déploiement Vercel
+.env
+.env.*
+.vercel/
+coverage/
+
+# Données locales de stockage
+storage/
+data/
