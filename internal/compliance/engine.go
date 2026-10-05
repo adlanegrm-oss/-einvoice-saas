@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/compliance/validators/ma"
 	"einvoice-saas/internal/model"
 )
@@ -18,8 +19,9 @@ func NewDispatcher() *Dispatcher {
 	d := &Dispatcher{
 		validators: make(map[string]model.JurisdictionValidator),
 	}
-	// Enregistrement du profil Maroc canonique
+	// Enregistrement des profils canoniques nationaux
 	d.Register(ma.NewMoroccoCanonicalValidator())
+	d.Register(fr.NewFranceCanonicalValidator())
 	return d
 }
 
