@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿.env
 .env.*
 *.pem
@@ -9,3 +10,18 @@ node_modules/
 .DS_Store
 Thumbs.db
 .vercel/
+=======
+node_modules/ 
+dist/ 
+
+bin/
+*.exe
+*.zip
+storage/
+data/
+coverage
+.env
+.env.*
+.vercel/
+VERCEL_DEPLOYMENT_SUMMARY.md
+>>>>>>> f5eca1f63dd31bbee3708ff8f851ae4a20a8e5d1

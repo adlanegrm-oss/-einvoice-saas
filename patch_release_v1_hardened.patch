@@ -1,0 +1,436 @@
+--- /dev/null
++++ b/internal/parser/security.go
+@@ -0,0 +1,78 @@
++package parser
++
++import (
++	"bytes"
++	"encoding/xml"
++	"errors"
++	"fmt"
++	"io"
++)
++
++const (
++	// MaxInvoiceXMLSize limite la taille pour empêcher l'épuisement mémoire (10 MB).
++	MaxInvoiceXMLSize = 10 * 1024 * 1024
++)
++
++var (
++	ErrPayloadTooLarge = errors.New("xml payload exceeds maximum allowed size (10MB)")
++	ErrSecurityEntity  = errors.New("security error: DTD and external XML entities are forbidden")
++)
++
++// HardenedXMLReader inspecte et filtre le flux XML pour interdire strictement les DTD et entités externes (XXE / XML Bomb).
++func HardenedXMLReader(raw io.Reader) ([]byte, error) {
++	limitedReader := io.LimitReader(raw, MaxInvoiceXMLSize+1)
++	data, err := io.ReadAll(limitedReader)
++	if err != nil {
++		return nil, fmt.Errorf("failed to read input stream: %w", err)
++	}
++	if len(data) > MaxInvoiceXMLSize {
++		return nil, ErrPayloadTooLarge
++	}
++
++	decoder := xml.NewDecoder(bytes.NewReader(data))
++	decoder.Strict = false
++	// Interdiction stricte de l'expansion d'entités personnalisées
++	decoder.Entity = map[string]string{}
++
++	for {
++		token, err := decoder.RawToken()
++		if err == io.EOF {
++			break
++		}
++		if err != nil {
++			return nil, fmt.Errorf("malformed xml token: %w", err)
++		}
++
++		switch tok := token.(type) {
++		case xml.Directive:
++			// Bloque expressément <!DOCTYPE ...> et toute tentative d'injection SYSTEM/PUBLIC
++			dStr := string(tok)
++			if bytes.Contains(tok, []byte("DOCTYPE")) || bytes.Contains(tok, []byte("ENTITY")) || bytes.Contains(tok, []byte("SYSTEM")) {
++				return nil, fmt.Errorf("%w: directive '%s' rejected", ErrSecurityEntity, dStr)
++			}
++		}
++	}
++
++	return data, nil
++}
+--- /dev/null
++++ b/internal/validator/en16931.go
+@@ -0,0 +1,118 @@
++package validator
++
++import (
++	"github.com/shopspring/decimal"
++)
++
++// DiagnosticResult structure standardisée d'anomalie de conformité CEN.
++type DiagnosticResult struct {
++	Code         string `json:"code"`
++	Severity     string `json:"severity"`
++	Path         string `json:"path"`
++	Message      string `json:"message"`
++	ActualValue  string `json:"actual_value,omitempty"`
++	ExpectedRule string `json:"expected_rule,omitempty"`
++}
++
++// ValidationReport consolidé pour l'API de conformité.
++type ValidationReport struct {
++	Valid         bool               `json:"valid"`
++	Syntax        string             `json:"syntax"`
++	Profile       string             `json:"profile"`
++	ErrorsCount   int                `json:"errors_count"`
++	WarningsCount int                `json:"warnings_count"`
++	Results       []DiagnosticResult `json:"results"`
++}
++
++// InvoiceMonetaryTotals encapsule les montants exacts pour vérification arithmétique.
++type InvoiceMonetaryTotals struct {
++	LineExtensionAmount decimal.Decimal // BT-106
++	TaxExclusiveAmount  decimal.Decimal // BT-109
++	TaxTotalAmount      decimal.Decimal // BT-110
++	TaxInclusiveAmount  decimal.Decimal // BT-112
++	PrepaidAmount       decimal.Decimal // BT-113
++	RoundingAmount      decimal.Decimal // BT-114
++	PayableAmount       decimal.Decimal // BT-115
++	AllowanceTotal      decimal.Decimal // BT-107
++	ChargeTotal         decimal.Decimal // BT-108
++}
++
++// ValidateEN16931CoreRules exécute les contrôles d'intégrité financière prescrits par le CEN EN 16931.
++func ValidateEN16931CoreRules(t InvoiceMonetaryTotals) ValidationReport {
++	report := ValidationReport{
++		Valid:   true,
++		Syntax:  "UBL-2.1",
++		Profile: "urn:cen.eu:en16931:2017",
++		Results: make([]DiagnosticResult, 0),
++	}
++
++	addError := func(code, path, msg, actual, expected string) {
++		report.Valid = false
++		report.ErrorsCount++
++		report.Results = append(report.Results, DiagnosticResult{
++			Code:         code,
++			Severity:     "ERROR",
++			Path:         path,
++			Message:      msg,
++			ActualValue:  actual,
++			ExpectedRule: expected,
++		})
++	}
++
++	// BR-CO-10: BT-115 (PayableAmount) = BT-112 (TaxInclusiveAmount) - BT-113 (PrepaidAmount) + BT-114 (RoundingAmount)
++	expectedPayable := t.TaxInclusiveAmount.Sub(t.PrepaidAmount).Add(t.RoundingAmount)
++	if !t.PayableAmount.Equal(expectedPayable) {
++		addError(
++			"BR-CO-10",
++			"/Invoice/LegalMonetaryTotal/PayableAmount",
++			"PayableAmount (BT-115) must equal TaxInclusiveAmount (BT-112) - PrepaidAmount (BT-113) + RoundingAmount (BT-114).",
++			t.PayableAmount.StringFixed(2),
++			expectedPayable.StringFixed(2),
++		)
++	}
++
++	// BR-CO-11: BT-112 (TaxInclusiveAmount) = BT-109 (TaxExclusiveAmount) + BT-110 (TaxTotalAmount)
++	expectedInclusive := t.TaxExclusiveAmount.Add(t.TaxTotalAmount)
++	if !t.TaxInclusiveAmount.Equal(expectedInclusive) {
++		addError(
++			"BR-CO-11",
++			"/Invoice/LegalMonetaryTotal/TaxInclusiveAmount",
++			"TaxInclusiveAmount (BT-112) must equal TaxExclusiveAmount (BT-109) + TaxTotalAmount (BT-110).",
++			t.TaxInclusiveAmount.StringFixed(2),
++			expectedInclusive.StringFixed(2),
++		)
++	}
++
++	// BR-CO-13: BT-109 (TaxExclusiveAmount) = BT-106 (SumOfLineAmounts) - BT-107 (SumOfAllowances) + BT-108 (SumOfCharges)
++	expectedExclusive := t.LineExtensionAmount.Sub(t.AllowanceTotal).Add(t.ChargeTotal)
++	if !t.TaxExclusiveAmount.Equal(expectedExclusive) {
++		addError(
++			"BR-CO-13",
++			"/Invoice/LegalMonetaryTotal/TaxExclusiveAmount",
++			"TaxExclusiveAmount (BT-109) must equal LineExtensionAmount (BT-106) - AllowanceTotal (BT-107) + ChargeTotal (BT-108).",
++			t.TaxExclusiveAmount.StringFixed(2),
++			expectedExclusive.StringFixed(2),
++		)
++	}
++
++	// BR-CO-16: BT-115 (PayableAmount) ne peut pas être strictement négatif si non explicitement autorisé
++	if t.PayableAmount.IsNegative() {
++		addError(
++			"BR-CO-16",
++			"/Invoice/LegalMonetaryTotal/PayableAmount",
++			"PayableAmount (BT-115) cannot be negative.",
++			t.PayableAmount.StringFixed(2),
++			">= 0.00",
++		)
++	}
++
++	return report
++}
+--- /dev/null
++++ b/internal/middleware/auth.go
+@@ -0,0 +1,91 @@
++package middleware
++
++import (
++	"context"
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
++	"net/http"
++	"strings"
++)
++
++type contextKey string
++
++const (
++	TenantIDContextKey contextKey = "tenant_id"
++	KeyIDContextKey    contextKey = "api_key_id"
++)
++
++type TenantRecord struct {
++	ID       string
++	Active   bool
++	KeyHash  string
++}
++
++type APIKeyStore interface {
++	FindTenantByKeyHash(ctx context.Context, hash string) (*TenantRecord, error)
++}
++
++// RequireAPIKey extrait le token Bearer, vérifie son empreinte SHA-256 et propage le TenantID dans le contexte.
++func RequireAPIKey(store APIKeyStore) func(http.Handler) http.Handler {
++	return func(next http.Handler) http.Handler {
++		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++			authHeader := r.Header.Get("Authorization")
++			if authHeader == "" {
++				http.Error(w, `{"error":"unauthorized","message":"missing Authorization header"}`, http.StatusUnauthorized)
++				return
++			}
++
++			parts := strings.SplitN(authHeader, " ", 2)
++			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
++				http.Error(w, `{"error":"unauthorized","message":"invalid authorization format, expected Bearer <token>"}`, http.StatusUnauthorized)
++				return
++			}
++
++			rawToken := strings.TrimSpace(parts[1])
++			if len(rawToken) < 32 {
++				http.Error(w, `{"error":"unauthorized","message":"invalid api key length"}`, http.StatusUnauthorized)
++				return
++			}
++
++			// Calcul du SHA-256 de la clé passée pour interdire la persistance en clair
++			hashBytes := sha256.Sum256([]byte(rawToken))
++			keyHash := hex.EncodeToString(hashBytes[:])
++
++			tenant, err := store.FindTenantByKeyHash(r.Context(), keyHash)
++			if err != nil || tenant == nil || !tenant.Active {
++				http.Error(w, `{"error":"forbidden","message":"invalid or inactive api key"}`, http.StatusForbidden)
++				return
++			}
++
++			// Injection obligatoire dans le contexte pour l'isolation de toute la chaîne de traitement
++			ctx := context.WithValue(r.Context(), TenantIDContextKey, tenant.ID)
++			ctx = context.WithValue(ctx, KeyIDContextKey, keyHash[:12])
++
++			next.ServeHTTP(w, r.WithContext(ctx))
++		})
++	}
++}
++
++// GetTenantID extrait le Tenant ID validé du contexte d'exécution.
++func GetTenantID(ctx context.Context) (string, error) {
++	val := ctx.Value(TenantIDContextKey)
++	if val == nil {
++		return "", errors.New("security fault: missing tenant in execution context")
++	}
++	tID, ok := val.(string)
++	if !ok || tID == "" {
++		return "", errors.New("security fault: invalid tenant format in context")
++	}
++	return tID, nil
++}
+--- /dev/null
++++ b/internal/evidence/ledger.go
+@@ -0,0 +1,78 @@
++package evidence
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"time"
++)
++
++// AuditEvent représente un maillon immuable dans l'historique d'une facture.
++type AuditEvent struct {
++	EventID        string    `json:"event_id"`
++	TenantID       string    `json:"tenant_id"`
++	InvoiceID      string    `json:"invoice_id"`
++	EventType      string    `json:"event_type"` // e.g. "INVOICE_RECEIVED", "VALIDATED", "FORWARDED_PDP"
++	Actor          string    `json:"actor"`
++	TimestampUTC   time.Time `json:"timestamp_utc"`
++	DocumentSHA256 string    `json:"document_sha256"`
++	PayloadSummary string    `json:"payload_summary"`
++	PreviousHash   string    `json:"previous_hash"`
++	CurrentHash    string    `json:"current_hash"`
++}
++
++// CalculateChainHash calcule le hash d'intégrité SHA-256 en injectant le hash du maillon précédent.
++func CalculateChainHash(ev *AuditEvent) string {
++	h := sha256.New()
++	h.Write([]byte(ev.TenantID))
++	h.Write([]byte(ev.InvoiceID))
++	h.Write([]byte(ev.EventType))
++	h.Write([]byte(ev.Actor))
++	h.Write([]byte(ev.TimestampUTC.Format(time.RFC3339Nano)))
++	h.Write([]byte(ev.DocumentSHA256))
++	h.Write([]byte(ev.PayloadSummary))
++	h.Write([]byte(ev.PreviousHash))
++	return hex.EncodeToString(h.Sum(nil))
++}
++
++// CompleteEvidencePackage représente le livrable certifiable exportable pour les tiers / auditeurs.
++type CompleteEvidencePackage struct {
++	ExportedAt     time.Time    `json:"exported_at_utc"`
++	TenantID       string       `json:"tenant_id"`
++	InvoiceID      string       `json:"invoice_id"`
++	DocumentDigest string       `json:"document_digest_sha256"`
++	EventsChain    []AuditEvent `json:"events_chain"`
++	IsChainValid   bool         `json:"is_chain_valid"`
++}
++
++// VerifyChain vérifie l'intégrité cryptographique absolue de la séquence d'événements.
++func VerifyChain(events []AuditEvent) (bool, error) {
++	if len(events) == 0 {
++		return true, nil
++	}
++
++	var expectedPrev string = "0000000000000000000000000000000000000000000000000000000000000000"
++
++	for idx, ev := range events {
++		if idx == 0 && ev.PreviousHash != expectedPrev {
++			return false, fmt.Errorf("genesis event has corrupted previous hash: %s", ev.PreviousHash)
++		}
++		if idx > 0 && ev.PreviousHash != events[idx-1].CurrentHash {
++			return false, fmt.Errorf("chain broken at event %s: expected prev %s, got %s", ev.EventID, events[idx-1].CurrentHash, ev.PreviousHash)
++		}
++
++		computed := CalculateChainHash(&ev)
++		if computed != ev.CurrentHash {
++			return false, fmt.Errorf("integrity violation at event %s: recalculation mismatch", ev.EventID)
++		}
++		expectedPrev = ev.CurrentHash
++	}
++
++	return true, nil
++}
++
++func (p *CompleteEvidencePackage) ToJSON() ([]byte, error) {
++	return json.MarshalIndent(p, "", "  ")
++}
+--- /dev/null
++++ b/api/openapi.yaml
+@@ -0,0 +1,97 @@
++openapi: 3.1.0
++info:
++  title: E-Invoicing Gateway & Compliance API
++  description: Developer-first compliance, validation (EN 16931), and delivery gateway for ERP and financial software.
++  version: 1.0.0
++servers:
++  - url: https://api.einvoice-gateway.io/v1
++    description: Production Cluster
++  - url: https://sandbox.einvoice-gateway.io/v1
++    description: Deterministic Testing Environment
++paths:
++  /invoices/validate:
++    post:
++      summary: Validate an invoice payload against EN 16931 rules
++      description: Synchronously checks XML (UBL 2.1 / CII) against semantic and monetary rules without submitting to PDP.
++      security:
++        - ApiKeyAuth: []
++      requestBody:
++        required: true
++        content:
++          application/xml:
++            schema:
++              type: string
++              format: binary
++      responses:
++        '200':
++          description: Validation report
++          content:
++            application/json:
++              schema:
++                $ref: '#/components/schemas/ValidationReport'
++        '400':
++          description: Parser security rejection (XXE, oversized file, illegal DTD)
++  /invoices:
++    post:
++      summary: Ingest, enforce idempotency, and schedule delivery
++      parameters:
++        - name: Idempotency-Key
++          in: header
++          required: true
++          schema:
++            type: string
++            format: uuid
++        - name: X-Mock-Outcome
++          in: header
++          required: false
++          description: Sandbox deterministic override
++          schema:
++            type: string
++            enum: [PDP_ACCEPTED, PDP_REJECTED, PDP_TIMEOUT]
++      security:
++        - ApiKeyAuth: []
++      requestBody:
++        required: true
++        content:
++          application/xml:
++            schema:
++              type: string
++              format: binary
++      responses:
++        '202':
++          description: Ingestion accepted and committed to transactional outbox
++  /invoices/{id}/evidence:
++    get:
++      summary: Download complete cryptographic evidence package
++      security:
++        - ApiKeyAuth: []
++      parameters:
++        - name: id
++          in: path
++          required: true
++          schema:
++            type: string
++      responses:
++        '200':
++          description: Verified cryptographic audit ledger
++components:
++  securitySchemes:
++    ApiKeyAuth:
++      type: http
++      scheme: bearer
++      bearerFormat: APIKey
++  schemas:
++    ValidationReport:
++      type: object
++      properties:
++        valid:
++          type: boolean
++        syntax:
++          type: string
++        errors_count:
++          type: integer
++        results:
++          type: array
++          items:
++            type: object

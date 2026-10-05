@@ -1,0 +1,5 @@
+﻿{
+  "buildCommand": "cd e-invoice-saas-auth-matrix && npm install && npm run build",
+  "outputDirectory": "e-invoice-saas-auth-matrix/dist",
+  "framework": "vite"
+}
