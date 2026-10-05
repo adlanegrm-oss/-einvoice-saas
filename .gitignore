@@ -37,3 +37,4 @@ coverage/
 # Données locales de stockage
 storage/
 data/
+coverage
