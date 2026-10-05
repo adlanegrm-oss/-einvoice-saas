@@ -1,123 +1,106 @@
-package exporter
+﻿package exporter
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"strings"
-	"time"
+"bytes"
+"encoding/xml"
+"fmt"
+"io"
+"strings"
+"time"
 )
 
 type FacturXProfile string
 
 const (
-	ProfileMinimum FacturXProfile = "MINIMUM"
-	ProfileBasic   FacturXProfile = "BASIC"
-	ProfileEN16931 FacturXProfile = "EN 16931"
+ProfileMinimum FacturXProfile = "MINIMUM"
+ProfileBasic   FacturXProfile = "BASIC"
+ProfileEN16931 FacturXProfile = "EN 16931"
 )
 
 type InvoiceMetadata struct {
-	InvoiceNumber string
-	SellerName    string
-	SellerSIREN   string
-	SellerVAT     string
-	BuyerName     string
-	IssueDate     time.Time
-	Currency      string
-	TotalHT       float64
-	TotalTTC      float64
-	TotalTax      float64
-	Profile       FacturXProfile
+InvoiceNumber string
+SellerName    string
+BuyerName     string
+IssueDate     time.Time
+Currency      string
+TotalHT       float64
+TotalTTC      float64
+Profile       FacturXProfile
 }
 
-// GenerateFacturXPDFA3 produit un fichier PDF/A-3b conforme avec le XML CII embarqué
+// validateCIIXMLPayload vérifie que le payload XML n'est pas vide,
+// est bien formé et a pour racine CrossIndustryInvoice.
+func validateCIIXMLPayload(ciiXML []byte) error {
+if len(bytes.TrimSpace(ciiXML)) == 0 {
+return fmt.Errorf("facturx: empty CII XML")
+}
+
+decoder := xml.NewDecoder(bytes.NewReader(ciiXML))
+var rootSeen bool
+
+for {
+tok, err := decoder.Token()
+if err == io.EOF {
+break
+}
+if err != nil {
+return fmt.Errorf("facturx: invalid CII XML: %w", err)
+}
+
+if start, ok := tok.(xml.StartElement); ok && !rootSeen {
+rootSeen = true
+if start.Name.Local != "CrossIndustryInvoice" {
+return fmt.Errorf("facturx: root element must be CrossIndustryInvoice, got %s", start.Name.Local)
+}
+}
+}
+
+if !rootSeen {
+return fmt.Errorf("facturx: missing CII root element")
+}
+
+return nil
+}
+
+// GenerateFacturXPDFA3 génère un conteneur PDF avec le XML CII embarqué.
+//
+// ATTENTION : cette fonction produit une structure de conteneur mais ne doit pas
+// être considérée comme une garantie de conformité PDF/A-3b complète (absence de profil ICC intégré, etc.).
+// La conformité PDF/A stricte doit être validée par un outil externe (ex: VeraPDF).
 func GenerateFacturXPDFA3(meta InvoiceMetadata, ciiXML []byte) ([]byte, error) {
-	if len(ciiXML) == 0 {
-		return nil, fmt.Errorf("facturx: cii xml payload cannot be empty")
-	}
-
-	profile := meta.Profile
-	if profile == "" {
-		profile = ProfileEN16931
-	}
-
-	var buf bytes.Buffer
-	var offsets []int
-
-	// 1. Header PDF 1.7 avec marqueurs binaires PDF/A
-	buf.WriteString("%PDF-1.7\n%\xE2\xE3\xCF\xD3\n")
-
-	// Helper pour enregistrer l'offset d'un objet
-	writeObj := func(objNum int, content string) {
-		offsets = append(offsets, buf.Len())
-		buf.WriteString(fmt.Sprintf("%d 0 obj\n%s\nendobj\n", objNum, content))
-	}
-
-	// 1 0 obj: Catalog avec /Names (EmbeddedFiles), /AF (Alternative) et /OutputIntents
-	writeObj(1, "<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 6 0 R] >> >> /AF [6 0 R] /OutputIntents [5 0 R] /Metadata 7 0 R >>")
-
-	// 2 0 obj: Pages
-	writeObj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
-
-	// 3 0 obj: Page
-	pageStream := fmt.Sprintf("BT /F1 16 Tf 50 780 Td (FACTURE ELECTRIQUE %s) Tj /F1 10 Tf 0 -30 Td (Emetteur: %s - SIREN: %s) Tj 0 -20 Td (TVA: %s) Tj 0 -30 Td (Client: %s) Tj 0 -25 Td (Date: %s | Devise: %s) Tj 0 -25 Td (Total HT: %.2f EUR | TVA: %.2f EUR | Total TTC: %.2f EUR) Tj 0 -40 Td (Document Factur-X profil %s - Fichier associe: factur-x.xml) Tj ET",
-		meta.InvoiceNumber, meta.SellerName, meta.SellerSIREN, meta.SellerVAT, meta.BuyerName,
-		meta.IssueDate.Format("02/01/2006"), meta.Currency, meta.TotalHT, meta.TotalTax, meta.TotalTTC, profile)
-
-	writeObj(3, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /AF [6 0 R] >>", ))
-
-	// 4 0 obj: Contenu page
-	writeObj(4, fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(pageStream), pageStream))
-
-	// 5 0 obj: OutputIntent (sRGB ICC) requis pour PDF/A-3
-	writeObj(5, "<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier (sRGB) /RegistryName (http://www.color.org) /Info (sRGB IEC61966-2.1) >>")
-
-	// 6 0 obj: Fichier XML Factur-X embarqué (/Filespec avec /AFRelationship /Alternative)
-	xmlLen := len(ciiXML)
-	writeObj(6, fmt.Sprintf("<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 8 0 R >> /Desc (Facture électronique structurée CII) /AFRelationship /Alternative >>"))
-
-	// 7 0 obj: Métadonnées XMP conformes Factur-X et PDF/A-3b
-	xmpContent := buildXMPMetadata(meta, ciiXML, profile)
-	writeObj(7, fmt.Sprintf("<< /Type /Metadata /Subtype /XML /Length %d >>\nstream\n%s\nendstream", len(xmpContent), xmpContent))
-
-	// 8 0 obj: EmbeddedFile Stream (factur-x.xml)
-	nowStr := time.Now().UTC().Format("D:20060102150405Z")
-	writeObj(8, fmt.Sprintf("<< /Type /EmbeddedFile /Subtype /text#2Fxml /Length %d /Params << /Size %d /ModDate (%s) >> >>\nstream\n%s\nendstream",
-		xmlLen, xmlLen, nowStr, string(ciiXML)))
-
-	// Table des références xref
-	xrefOffset := buf.Len()
-	buf.WriteString(fmt.Sprintf("xref\n0 %d\n", len(offsets)+1))
-	buf.WriteString("0000000000 65535 f \n")
-	for _, off := range offsets {
-		buf.WriteString(fmt.Sprintf("%010d 00000 n \n", off))
-	}
-
-	// Trailer
-	buf.WriteString(fmt.Sprintf("trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(offsets)+1, xrefOffset))
-
-	return buf.Bytes(), nil
+if err := validateCIIXMLPayload(ciiXML); err != nil {
+return nil, err
 }
 
-func buildXMPMetadata(meta InvoiceMetadata, xmlBytes []byte, profile FacturXProfile) string {
-	h := sha256.Sum256(xmlBytes)
-	xmlDigest := hex.EncodeToString(h[:])
+if meta.Profile == "" {
+meta.Profile = ProfileEN16931
+}
 
-	return fmt.Sprintf(`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+var buf bytes.Buffer
+
+// En-tête PDF 1.7
+buf.WriteString("%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
+
+// 1: Catalog
+off1 := buf.Len()
+buf.WriteString("1 0 obj\n<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 6 0 R] >> >> /AF [6 0 R] /OutputIntents [4 0 R] /Metadata 5 0 R >>\nendobj\n")
+
+// 2: Pages
+off2 := buf.Len()
+buf.WriteString("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+
+// 3: Page simple
+off3 := buf.Len()
+buf.WriteString("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << >> /Contents [] >>\nendobj\n")
+
+// 4: OutputIntent sRGB
+off4 := buf.Len()
+buf.WriteString("4 0 obj\n<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier (sRGB) /Info (sRGB IEC61966-2.1) >>\nendobj\n")
+
+// Métadonnées XMP PDF/A-3b & Factur-X
+xmp := fmt.Sprintf(`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-    <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-      <pdfaExtension:schemas>
-        <rdf:Bag>
-          <rdf:li rdf:parseType="Resource">
-            <pdfaProperty:name>DocumentFileName</pdfaProperty:name>
-            <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-            <pdfaProperty:description>Nom du fichier de facture incorporé</pdfaProperty:description>
-          </rdf:li>
-        </rdf:Bag>
-      </pdfaExtension:schemas>
-    </rdf:Description>
     <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
       <pdfaid:part>3</pdfaid:part>
       <pdfaid:conformance>B</pdfaid:conformance>
@@ -127,38 +110,69 @@ func buildXMPMetadata(meta InvoiceMetadata, xmlBytes []byte, profile FacturXProf
       <fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>
       <fx:Version>1.0</fx:Version>
       <fx:ConformanceLevel>%s</fx:ConformanceLevel>
-      <fx:Digest>%s</fx:Digest>
-    </rdf:Description>
-    <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">
-      <dc:title><rdf:Alt><rdf:li xml:lang="x-default">Facture %s</rdf:li></rdf:Alt></dc:title>
-      <dc:creator><rdf:Seq><rdf:li>%s</rdf:li></rdf:Seq></dc:creator>
-      <dc:date><rdf:Seq><rdf:li>%s</rdf:li></rdf:Seq></dc:date>
     </rdf:Description>
   </rdf:RDF>
 </x:xmpmeta>
-<?xpacket end="w"?>`,
-		profile, xmlDigest, meta.InvoiceNumber, meta.SellerName, time.Now().UTC().Format(time.RFC3339))
+<?xpacket end="w"?>`, meta.Profile)
+
+// 5: Métadonnées Stream
+off5 := buf.Len()
+buf.WriteString(fmt.Sprintf("5 0 obj\n<< /Type /Metadata /Subtype /XML /Length %d >>\nstream\n%s\nendstream\nendobj\n", len(xmp), xmp))
+
+// 6: Filespec
+off6 := buf.Len()
+buf.WriteString("6 0 obj\n<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 7 0 R >> /AFRelationship /Alternative /Desc (Factur-X Invoice XML) >>\nendobj\n")
+
+// 7: EmbeddedFile Stream (CII XML exact)
+off7 := buf.Len()
+buf.WriteString(fmt.Sprintf("7 0 obj\n<< /Type /EmbeddedFile /Subtype /text#2Fxml /Length %d >>\nstream\n", len(ciiXML)))
+buf.Write(ciiXML)
+buf.WriteString("\nendstream\nendobj\n")
+
+// XREF
+startXref := buf.Len()
+buf.WriteString("xref\n0 8\n")
+buf.WriteString("0000000000 65535 f \n")
+for _, off := range []int{off1, off2, off3, off4, off5, off6, off7} {
+buf.WriteString(fmt.Sprintf("%010d 00000 n \n", off))
 }
 
-// VerifyPDFA3Conformance vérifie la présence des marqueurs normatifs Factur-X
+// Trailer
+buf.WriteString(fmt.Sprintf("trailer\n<< /Size 8 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", startXref))
+
+return buf.Bytes(), nil
+}
+
+// VerifyFacturXContainer vérifie la présence des marqueurs structurels Factur-X dans le flux PDF.
+func VerifyFacturXContainer(pdfData []byte) error {
+if len(pdfData) == 0 {
+return fmt.Errorf("facturx: empty PDF")
+}
+
+raw := string(pdfData)
+
+if !strings.HasPrefix(raw, "%PDF-1.") {
+return fmt.Errorf("facturx: PDF header missing")
+}
+
+required := []string{
+"/AFRelationship /Alternative",
+"(factur-x.xml)",
+"<pdfaid:part>3</pdfaid:part>",
+"<pdfaid:conformance>B</pdfaid:conformance>",
+"urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#",
+}
+
+for _, marker := range required {
+if !strings.Contains(raw, marker) {
+return fmt.Errorf("facturx: required marker missing: %s", marker)
+}
+}
+
+return nil
+}
+
+// VerifyPDFA3Conformance est maintenu pour compatibilité descendante.
 func VerifyPDFA3Conformance(pdfData []byte) error {
-	raw := string(pdfData)
-
-	if !strings.HasPrefix(raw, "%PDF-1.") {
-		return fmt.Errorf("pdfa3: entête PDF manquante")
-	}
-	if !strings.Contains(raw, "/AFRelationship /Alternative") {
-		return fmt.Errorf("pdfa3: relation AFRelationship /Alternative manquante")
-	}
-	if !strings.Contains(raw, "(factur-x.xml)") {
-		return fmt.Errorf("pdfa3: pièce jointe factur-x.xml introuvable dans le dictionnaire")
-	}
-	if !strings.Contains(raw, "<pdfaid:part>3</pdfaid:part>") {
-		return fmt.Errorf("pdfa3: métadonnées pdfaid part 3 manquantes")
-	}
-	if !strings.Contains(raw, "urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#") {
-		return fmt.Errorf("pdfa3: namespace XMP Factur-X manquant")
-	}
-
-	return nil
+return VerifyFacturXContainer(pdfData)
 }
