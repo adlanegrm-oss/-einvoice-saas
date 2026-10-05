@@ -1,27 +1,29 @@
-<<<<<<< HEAD
-﻿.env
-.env.*
-*.pem
-*.key
+﻿# Binaires & exécutables compilés
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 bin/
 dist/
-node_modules/
-*.log
-.DS_Store
-Thumbs.db
-.vercel/
-=======
-node_modules/ 
-dist/ 
 
-bin/
-*.exe
+# Répertoires et fichiers temporaires Go
+.gotmp/
+*.test
+*.out
+cover.out
+coverage.html
+
+# Archives & patchs temporaires
 *.zip
-storage/
-data/
-coverage
-.env
-.env.*
-.vercel/
-VERCEL_DEPLOYMENT_SUMMARY.md
->>>>>>> f5eca1f63dd31bbee3708ff8f851ae4a20a8e5d1
+*.tar.gz
+*.7z
+
+# Logs et traces d'exécution
+*.log
+data/archives/**/*.log
+
+# Frontend & dépendances Node
+node_modules/
+.vite/
+e-invoice-saas-auth-matrix/dist/
