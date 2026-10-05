@@ -1,14 +1,17 @@
 ﻿package model
 
 import (
+"bytes"
 "encoding/xml"
+"fmt"
 "strconv"
 "strings"
 "time"
 )
 
 type rawCIIAmount struct {
-Value float64 `xml:",chardata"`
+Value    float64 `xml:",chardata"`
+Currency string  `xml:"currencyID,attr"`
 }
 
 type rawCIIQuantity struct {
@@ -16,49 +19,37 @@ Value float64 `xml:",chardata"`
 Unit  string  `xml:"unitCode,attr"`
 }
 
-type rawCIIParty struct {
-Name string `xml:"Name"`
-SpecifiedLegalOrganization struct {
-ID struct {
-Value    string `xml:",chardata"`
-SchemeID string `xml:"schemeID,attr"`
-} `xml:"ID"`
-} `xml:"SpecifiedLegalOrganization"`
-PostalTradeAddress struct {
-CountryID string `xml:"CountryID"`
-} `xml:"PostalTradeAddress"`
-SpecifiedTaxRegistration struct {
-ID struct {
-Value    string `xml:",chardata"`
-SchemeID string `xml:"schemeID,attr"`
-} `xml:"ID"`
-} `xml:"SpecifiedTaxRegistration"`
-}
-
 type rawCIITaxSubtotal struct {
-CalculatedAmount rawCIIAmount `xml:"CalculatedAmount"`
-BasisAmount      rawCIIAmount `xml:"BasisAmount"`
-CategoryCode     string       `xml:"CategoryCode"`
-RateApplicablePercent string  `xml:"RateApplicablePercent"`
+CalculatedAmount      rawCIIAmount `xml:"CalculatedAmount"`
+TypeCode              string       `xml:"TypeCode"`
+BasisAmount           rawCIIAmount `xml:"BasisAmount"`
+CategoryCode          string       `xml:"CategoryCode"`
+RateApplicablePercent string       `xml:"RateApplicablePercent"`
 }
 
 type rawCIILineItem struct {
 AssociatedDocumentLineDocument struct {
 LineID string `xml:"LineID"`
 } `xml:"AssociatedDocumentLineDocument"`
+
 SpecifiedTradeProduct struct {
 Name        string `xml:"Name"`
 Description string `xml:"Description"`
 } `xml:"SpecifiedTradeProduct"`
+
 SpecifiedLineTradeAgreement struct {
 NetPriceProductTradePrice struct {
 ChargeAmount rawCIIAmount `xml:"ChargeAmount"`
 } `xml:"NetPriceProductTradePrice"`
 } `xml:"SpecifiedLineTradeAgreement"`
+
 SpecifiedLineTradeDelivery struct {
 BilledQuantity rawCIIQuantity `xml:"BilledQuantity"`
 } `xml:"SpecifiedLineTradeDelivery"`
+
 SpecifiedLineTradeSettlement struct {
+ApplicableTradeTax []rawCIITaxSubtotal `xml:"ApplicableTradeTax"`
+
 SpecifiedTradeSettlementLineMonetarySummation struct {
 LineTotalAmount rawCIIAmount `xml:"LineTotalAmount"`
 } `xml:"SpecifiedTradeSettlementLineMonetarySummation"`
@@ -67,14 +58,16 @@ LineTotalAmount rawCIIAmount `xml:"LineTotalAmount"`
 
 type rawCIIDocument struct {
 XMLName xml.Name `xml:"CrossIndustryInvoice"`
+
 ExchangedDocumentContext struct {
 GuidelineSpecifiedDocumentContextParameter struct {
 ID string `xml:"ID"`
 } `xml:"GuidelineSpecifiedDocumentContextParameter"`
 } `xml:"ExchangedDocumentContext"`
+
 ExchangedDocument struct {
-ID       string `xml:"ID"`
-TypeCode string `xml:"TypeCode"`
+ID            string `xml:"ID"`
+TypeCode      string `xml:"TypeCode"`
 IssueDateTime struct {
 DateTimeString struct {
 Value  string `xml:",chardata"`
@@ -82,15 +75,58 @@ Format string `xml:"format,attr"`
 } `xml:"DateTimeString"`
 } `xml:"IssueDateTime"`
 } `xml:"ExchangedDocument"`
+
 SupplyChainTradeTransaction struct {
 IncludedSupplyChainTradeLineItem []rawCIILineItem `xml:"IncludedSupplyChainTradeLineItem"`
-ApplicableHeaderTradeAgreement  struct {
-SellerTradeParty rawCIIParty `xml:"SellerTradeParty"`
-BuyerTradeParty  rawCIIParty `xml:"BuyerTradeParty"`
+
+ApplicableHeaderTradeAgreement struct {
+SellerTradeParty struct {
+Name                     string `xml:"Name"`
+SpecifiedLegalOrganization struct {
+ID string `xml:"ID"`
+} `xml:"SpecifiedLegalOrganization"`
+SpecifiedTaxRegistration struct {
+ID string `xml:"ID"`
+} `xml:"SpecifiedTaxRegistration"`
+PostalTradeAddress struct {
+PostcodeCode string `xml:"PostcodeCode"`
+LineOne      string `xml:"LineOne"`
+CityName     string `xml:"CityName"`
+CountryID    string `xml:"CountryID"`
+} `xml:"PostalTradeAddress"`
+} `xml:"SellerTradeParty"`
+
+BuyerTradeParty struct {
+Name                     string `xml:"Name"`
+SpecifiedLegalOrganization struct {
+ID string `xml:"ID"`
+} `xml:"SpecifiedLegalOrganization"`
+SpecifiedTaxRegistration struct {
+ID string `xml:"ID"`
+} `xml:"SpecifiedTaxRegistration"`
+PostalTradeAddress struct {
+PostcodeCode string `xml:"PostcodeCode"`
+LineOne      string `xml:"LineOne"`
+CityName     string `xml:"CityName"`
+CountryID    string `xml:"CountryID"`
+} `xml:"PostalTradeAddress"`
+} `xml:"BuyerTradeParty"`
 } `xml:"ApplicableHeaderTradeAgreement"`
+
 ApplicableHeaderTradeSettlement struct {
-InvoiceCurrencyCode             string              `xml:"InvoiceCurrencyCode"`
-ApplicableTradeTax              []rawCIITaxSubtotal `xml:"ApplicableTradeTax"`
+InvoiceCurrencyCode string              `xml:"InvoiceCurrencyCode"`
+PaymentReference    string              `xml:"PaymentReference"`
+ApplicableTradeTax  []rawCIITaxSubtotal `xml:"ApplicableTradeTax"`
+
+SpecifiedTradePaymentTerms struct {
+DueDateDateTime struct {
+DateTimeString struct {
+Value  string `xml:",chardata"`
+Format string `xml:"format,attr"`
+} `xml:"DateTimeString"`
+} `xml:"DueDateDateTime"`
+} `xml:"SpecifiedTradePaymentTerms"`
+
 SpecifiedTradeSettlementHeaderMonetarySummation struct {
 LineTotalAmount     rawCIIAmount `xml:"LineTotalAmount"`
 TaxBasisTotalAmount rawCIIAmount `xml:"TaxBasisTotalAmount"`
@@ -102,103 +138,149 @@ DuePayableAmount    rawCIIAmount `xml:"DuePayableAmount"`
 } `xml:"SupplyChainTradeTransaction"`
 }
 
-// NormalizeCIIToCanonical convertit un flux XML UN/CEFACT CII (Factur-X) en CanonicalInvoice
-func NormalizeCIIToCanonical(xmlPayload []byte) (*CanonicalInvoice, error) {
+func parseCIIDate(value string) (time.Time, error) {
+value = strings.TrimSpace(value)
+if value == "" {
+return time.Time{}, nil
+}
+
+formats := []string{
+"20060102",
+"2006-01-02",
+"20060102150405",
+"2006-01-02T15:04:05",
+"2006-01-02T15:04:05Z07:00",
+}
+
+for _, format := range formats {
+if t, err := time.Parse(format, value); err == nil {
+return t, nil
+}
+}
+
+return time.Time{}, fmt.Errorf("format de date CII invalide: %q", value)
+}
+
+func NormalizeCIIToCanonical(xmlData []byte) (*CanonicalInvoice, error) {
+if len(bytes.TrimSpace(xmlData)) == 0 {
+return nil, fmt.Errorf("cii: payload XML vide")
+}
+
 var doc rawCIIDocument
-if err := xml.Unmarshal(xmlPayload, &doc); err != nil {
-return nil, err
+if err := xml.Unmarshal(xmlData, &doc); err != nil {
+return nil, fmt.Errorf("cii: echec unmarshal XML: %w", err)
 }
 
-dateRaw := strings.TrimSpace(doc.ExchangedDocument.IssueDateTime.DateTimeString.Value)
-date, _ := time.Parse("20060102", dateRaw)
-if date.IsZero() {
-date, _ = time.Parse("2006-01-02", dateRaw)
+issueDateRaw := strings.TrimSpace(doc.ExchangedDocument.IssueDateTime.DateTimeString.Value)
+if issueDateRaw == "" {
+return nil, fmt.Errorf("cii: la date d'emission (IssueDateTime) est obligatoire")
+}
+issueDate, err := parseCIIDate(issueDateRaw)
+if err != nil {
+return nil, fmt.Errorf("cii: date d'emission invalide: %w", err)
 }
 
-agreement := doc.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement
 settlement := doc.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement
-totals := settlement.SpecifiedTradeSettlementHeaderMonetarySummation
+agreement := doc.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement
 
-sellerCountry := strings.ToUpper(strings.TrimSpace(agreement.SellerTradeParty.PostalTradeAddress.CountryID))
-buyerCountry := strings.ToUpper(strings.TrimSpace(agreement.BuyerTradeParty.PostalTradeAddress.CountryID))
-
-targetJurisdiction := "FR"
-if sellerCountry == "MA" || buyerCountry == "MA" || settlement.InvoiceCurrencyCode == "MAD" {
-targetJurisdiction = "MA"
-} else if sellerCountry != "" {
-targetJurisdiction = sellerCountry
+var dueDate *time.Time
+dueDateRaw := strings.TrimSpace(settlement.SpecifiedTradePaymentTerms.DueDateDateTime.DateTimeString.Value)
+if dueDateRaw != "" {
+parsedDue, err := parseCIIDate(dueDateRaw)
+if err != nil {
+return nil, fmt.Errorf("cii: date d'echeance invalide: %w", err)
+}
+dueDate = &parsedDue
 }
 
-sellerTaxID := agreement.SellerTradeParty.SpecifiedTaxRegistration.ID.Value
-sellerOrgID := agreement.SellerTradeParty.SpecifiedLegalOrganization.ID.Value
-buyerTaxID := agreement.BuyerTradeParty.SpecifiedTaxRegistration.ID.Value
-buyerOrgID := agreement.BuyerTradeParty.SpecifiedLegalOrganization.ID.Value
-
-invoice := &CanonicalInvoice{
-ID:                 doc.ExchangedDocument.ID,
-InvoiceNumber:      doc.ExchangedDocument.ID,
-IssueDate:          date,
+canonical := &CanonicalInvoice{
+ID:                 strings.TrimSpace(doc.ExchangedDocument.ID),
+InvoiceNumber:      strings.TrimSpace(doc.ExchangedDocument.ID),
+IssueDate:          issueDate,
+DueDate:            dueDate,
 Currency:           strings.TrimSpace(settlement.InvoiceCurrencyCode),
 SourceSyntax:       "CII-D16B",
-TargetJurisdiction: targetJurisdiction,
+TargetJurisdiction: "FR",
+PaymentReference:   strings.TrimSpace(settlement.PaymentReference),
+
 Seller: Party{
-Name:        agreement.SellerTradeParty.Name,
-TaxID:       sellerTaxID,
-Country:     sellerCountry,
-Identifiers: make(map[string]string),
+Name:        strings.TrimSpace(agreement.SellerTradeParty.Name),
+TaxID:       strings.TrimSpace(agreement.SellerTradeParty.SpecifiedTaxRegistration.ID),
+NationalID:  strings.TrimSpace(agreement.SellerTradeParty.SpecifiedLegalOrganization.ID),
+AddressLine: strings.TrimSpace(agreement.SellerTradeParty.PostalTradeAddress.LineOne),
+City:        strings.TrimSpace(agreement.SellerTradeParty.PostalTradeAddress.CityName),
+PostalZone:  strings.TrimSpace(agreement.SellerTradeParty.PostalTradeAddress.PostcodeCode),
+Country:     strings.TrimSpace(agreement.SellerTradeParty.PostalTradeAddress.CountryID),
 },
 Buyer: Party{
-Name:        agreement.BuyerTradeParty.Name,
-TaxID:       buyerTaxID,
-Country:     buyerCountry,
-Identifiers: make(map[string]string),
+Name:        strings.TrimSpace(agreement.BuyerTradeParty.Name),
+TaxID:       strings.TrimSpace(agreement.BuyerTradeParty.SpecifiedTaxRegistration.ID),
+NationalID:  strings.TrimSpace(agreement.BuyerTradeParty.SpecifiedLegalOrganization.ID),
+AddressLine: strings.TrimSpace(agreement.BuyerTradeParty.PostalTradeAddress.LineOne),
+City:        strings.TrimSpace(agreement.BuyerTradeParty.PostalTradeAddress.CityName),
+PostalZone:  strings.TrimSpace(agreement.BuyerTradeParty.PostalTradeAddress.PostcodeCode),
+Country:     strings.TrimSpace(agreement.BuyerTradeParty.PostalTradeAddress.CountryID),
 },
 Totals: MonetaryTotals{
-LineExtensionAmount: totals.LineTotalAmount.Value,
-TaxExclusiveAmount:  totals.TaxBasisTotalAmount.Value,
-TaxInclusiveAmount:  totals.GrandTotalAmount.Value,
-PayableAmount:       totals.DuePayableAmount.Value,
+LineExtensionAmount: settlement.SpecifiedTradeSettlementHeaderMonetarySummation.LineTotalAmount.Value,
+TaxExclusiveAmount:  settlement.SpecifiedTradeSettlementHeaderMonetarySummation.TaxBasisTotalAmount.Value,
+TaxInclusiveAmount:  settlement.SpecifiedTradeSettlementHeaderMonetarySummation.GrandTotalAmount.Value,
+PayableAmount:       settlement.SpecifiedTradeSettlementHeaderMonetarySummation.DuePayableAmount.Value,
 },
-Lines: make([]InvoiceLine, 0, len(doc.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem)),
 }
 
-if sellerOrgID != "" {
-invoice.Seller.Identifiers["SIRET"] = sellerOrgID
-}
-if buyerOrgID != "" {
-invoice.Buyer.Identifiers["SIRET"] = buyerOrgID
-}
-
-if targetJurisdiction == "MA" {
-invoice.Seller.NationalID = sellerOrgID
-invoice.Buyer.NationalID = buyerOrgID
-}
-
-// Normalisation des lignes
 for _, item := range doc.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem {
-desc := item.SpecifiedTradeProduct.Description
+desc := strings.TrimSpace(item.SpecifiedTradeProduct.Description)
 if desc == "" {
-desc = item.SpecifiedTradeProduct.Name
+desc = strings.TrimSpace(item.SpecifiedTradeProduct.Name)
 }
-invoice.Lines = append(invoice.Lines, InvoiceLine{
-ID:          item.AssociatedDocumentLineDocument.LineID,
+
+var vatPercent float64
+var vatCategory string
+
+if len(item.SpecifiedLineTradeSettlement.ApplicableTradeTax) > 0 {
+tax := item.SpecifiedLineTradeSettlement.ApplicableTradeTax[0]
+vatCategory = strings.TrimSpace(tax.CategoryCode)
+
+pctRaw := strings.TrimSpace(tax.RateApplicablePercent)
+if pctRaw != "" {
+var parseErr error
+vatPercent, parseErr = strconv.ParseFloat(pctRaw, 64)
+if parseErr != nil {
+return nil, fmt.Errorf("cii: taux TVA invalide %q sur la ligne %q: %w", pctRaw, item.AssociatedDocumentLineDocument.LineID, parseErr)
+}
+}
+}
+
+canonical.Lines = append(canonical.Lines, InvoiceLine{
+ID:          strings.TrimSpace(item.AssociatedDocumentLineDocument.LineID),
 Description: desc,
 Quantity:    item.SpecifiedLineTradeDelivery.BilledQuantity.Value,
 UnitPrice:   item.SpecifiedLineTradeAgreement.NetPriceProductTradePrice.ChargeAmount.Value,
 LineTotal:   item.SpecifiedLineTradeSettlement.SpecifiedTradeSettlementLineMonetarySummation.LineTotalAmount.Value,
+VatPercent:  vatPercent,
+VatCategory: vatCategory,
 })
 }
 
-// Normalisation des taxes
 for _, tax := range settlement.ApplicableTradeTax {
-pct, _ := strconv.ParseFloat(tax.RateApplicablePercent, 64)
-invoice.TaxSubtotals = append(invoice.TaxSubtotals, TaxSubtotal{
+pctRaw := strings.TrimSpace(tax.RateApplicablePercent)
+var pct float64
+if pctRaw != "" {
+var parseErr error
+pct, parseErr = strconv.ParseFloat(pctRaw, 64)
+if parseErr != nil {
+return nil, fmt.Errorf("cii: taux TVA en-tete invalide %q: %w", pctRaw, parseErr)
+}
+}
+
+canonical.TaxSubtotals = append(canonical.TaxSubtotals, TaxSubtotal{
 TaxableAmount: tax.BasisAmount.Value,
 TaxAmount:     tax.CalculatedAmount.Value,
 Percent:       pct,
-CategoryCode:  tax.CategoryCode,
+CategoryCode:  strings.TrimSpace(tax.CategoryCode),
 })
 }
 
-return invoice, nil
+return canonical, nil
 }

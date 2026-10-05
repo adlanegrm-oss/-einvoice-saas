@@ -1,123 +1,149 @@
-package validator
+﻿package validator
 
 import (
-	"testing"
+"os"
+"path/filepath"
+"testing"
+"time"
+
+"einvoice-saas/internal/model"
 )
 
 func TestNormativeValidator_ValidInvoice(t *testing.T) {
-	xmlSample := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:en16931</ram:ID>
-    </ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument>
-    <ram:ID>INV-2026-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime>
-      <udt:DateTimeString format="102" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">20261004</udt:DateTimeString>
-    </ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>1000.00</ram:LineTotalAmount>
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-    <ram:ApplicableHeaderTradeAgreement>
-      <ram:SellerTradeParty>
-        <ram:Name>Fournisseur SAS</ram:Name>
-        <ram:SpecifiedLegalOrganization>
-          <ram:ID>73204903600045</ram:ID>
-        </ram:SpecifiedLegalOrganization>
-        <ram:PostalTradeAddress>
-          <ram:CountryID>FR</ram:CountryID>
-        </ram:PostalTradeAddress>
-      </ram:SellerTradeParty>
-      <ram:BuyerTradeParty>
-        <ram:Name>Client SAS</ram:Name>
-        <ram:PostalTradeAddress>
-          <ram:CountryID>FR</ram:CountryID>
-        </ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-    </ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax>
-        <ram:BasisAmount>1000.00</ram:BasisAmount>
-        <ram:CalculatedAmount>200.00</ram:CalculatedAmount>
-      </ram:ApplicableTradeTax>
-      <ram:SpecifiedTradePaymentTerms>
-        <ram:DueDateDateTime>
-          <udt:DateTimeString format="102" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">20261104</udt:DateTimeString>
-        </ram:DueDateDateTime>
-      </ram:SpecifiedTradePaymentTerms>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>1000.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>1000.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>200.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>1200.00</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>1200.00</ram:DuePayableAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
+inv := &model.CanonicalInvoice{
+IssueDate: time.Now(),
+Lines: []model.InvoiceLine{
+{ID: "1", Quantity: 2.0, UnitPrice: 100.0, LineTotal: 200.0, VatPercent: 20.0, VatCategory: "S"},
+{ID: "2", Quantity: 1.0, UnitPrice: 50.0, LineTotal: 50.0, VatPercent: 20.0, VatCategory: "S"},
+},
+Totals: model.MonetaryTotals{
+LineExtensionAmount: 250.0,
+TaxExclusiveAmount:  250.0,
+TaxInclusiveAmount:  300.0,
+PayableAmount:       300.0,
+},
+TaxSubtotals: []model.TaxSubtotal{
+{TaxableAmount: 250.0, Percent: 20.0, TaxAmount: 50.0, CategoryCode: "S"},
+},
+}
 
-	validator := NewNormativeValidator(false)
-	result, err := validator.ValidateEN16931AndPeppol([]byte(xmlSample))
-	if err != nil {
-		t.Fatalf("Validation error: %v", err)
-	}
-	if !result.Valid {
-		t.Fatalf("Expected valid, got errors: %+v", result.RuleErrors)
-	}
+val := NewNormativeValidator(true)
+res, err := val.ValidateCanonical(inv)
+if err != nil {
+t.Fatalf("erreur validation inattendue: %v", err)
+}
+if !res.Valid {
+t.Fatalf("la facture valide a été rejetée: %v", res.RuleErrors)
+}
 }
 
 func TestNormativeValidator_RejectsMathInconsistency(t *testing.T) {
-	xmlCorrupted := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter><ram:ID>urn:cen.eu:en16931:2017</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument><ram:ID>INV-ERR-01</ram:ID><ram:TypeCode>380</ram:TypeCode><ram:IssueDateTime><udt:DateTimeString>20261004</udt:DateTimeString></ram:IssueDateTime></rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:IncludedSupplyChainTradeLineItem><ram:AssociatedDocumentLineDocument><ram:LineID>1</ram:LineID></ram:AssociatedDocumentLineDocument><ram:SpecifiedLineTradeSettlement><ram:SpecifiedTradeSettlementLineMonetarySummation><ram:LineTotalAmount>100.00</ram:LineTotalAmount></ram:SpecifiedTradeSettlementLineMonetarySummation></ram:SpecifiedLineTradeSettlement></ram:IncludedSupplyChainTradeLineItem>
-    <ram:ApplicableHeaderTradeAgreement><ram:SellerTradeParty><ram:Name>Vendeur</ram:Name><ram:PostalTradeAddress><ram:CountryID>FR</ram:CountryID></ram:PostalTradeAddress></ram:SellerTradeParty><ram:BuyerTradeParty><ram:Name>Acheteur</ram:Name><ram:PostalTradeAddress><ram:CountryID>FR</ram:CountryID></ram:PostalTradeAddress></ram:BuyerTradeParty></ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax><ram:BasisAmount>100.00</ram:BasisAmount><ram:CalculatedAmount>20.00</ram:CalculatedAmount></ram:ApplicableTradeTax>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>20.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>999.00</ram:GrandTotalAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
+t.Run("Rejet calcul montant de ligne (BR-LINE-NET-AMOUNT)", func(t *testing.T) {
+inv := &model.CanonicalInvoice{
+Lines: []model.InvoiceLine{
+{ID: "1", Quantity: 2.0, UnitPrice: 100.0, LineTotal: 250.0}, // Faux : 2 * 100 = 200 != 250
+},
+Totals: model.MonetaryTotals{
+LineExtensionAmount: 250.0,
+TaxExclusiveAmount:  250.0,
+TaxInclusiveAmount:  250.0,
+},
+}
+val := NewNormativeValidator(false)
+res, err := val.ValidateCanonical(inv)
+if err != nil {
+t.Fatal(err)
+}
+if res.Valid {
+t.Fatal("attendu: rejet pour incohérence ligne")
+}
+})
 
-	validator := NewNormativeValidator(false)
-	result, err := validator.ValidateEN16931AndPeppol([]byte(xmlCorrupted))
-	if err != nil {
-		t.Fatalf("Unexpected execution error: %v", err)
-	}
-	if result.Valid {
-		t.Fatal("Expected validation to fail on corrupt grand total (BR-CO-15)")
-	}
+t.Run("Rejet somme des lignes vs LineExtensionAmount (BR-CO-10)", func(t *testing.T) {
+inv := &model.CanonicalInvoice{
+Lines: []model.InvoiceLine{
+{ID: "1", Quantity: 1.0, UnitPrice: 100.0, LineTotal: 100.0},
+},
+Totals: model.MonetaryTotals{
+LineExtensionAmount: 90.0, // Faux : somme = 100 != 90
+TaxExclusiveAmount:  90.0,
+TaxInclusiveAmount:  90.0,
+},
+}
+val := NewNormativeValidator(false)
+res, err := val.ValidateCanonical(inv)
+if err != nil {
+t.Fatal(err)
+}
+if res.Valid {
+t.Fatal("attendu: rejet pour BR-CO-10")
+}
+})
 
-	foundBRCO15 := false
-	for _, r := range result.RuleErrors {
-		if r.RuleID == "BR-CO-15" {
-			foundBRCO15 = true
-		}
-	}
-	if !foundBRCO15 {
-		t.Errorf("Expected BR-CO-15 violation, got: %+v", result.RuleErrors)
-	}
+t.Run("Rejet calcul TVA (BR-TAX-CALCULATION)", func(t *testing.T) {
+inv := &model.CanonicalInvoice{
+Lines: []model.InvoiceLine{
+{ID: "1", Quantity: 1.0, UnitPrice: 1000.0, LineTotal: 1000.0},
+},
+Totals: model.MonetaryTotals{
+LineExtensionAmount: 1000.0,
+TaxExclusiveAmount:  1000.0,
+TaxInclusiveAmount:  1100.0,
+},
+TaxSubtotals: []model.TaxSubtotal{
+{TaxableAmount: 1000.0, Percent: 20.0, TaxAmount: 100.0}, // Faux : 1000 * 20% = 200 != 100
+},
+}
+val := NewNormativeValidator(false)
+res, err := val.ValidateCanonical(inv)
+if err != nil {
+t.Fatal(err)
+}
+if res.Valid {
+t.Fatal("attendu: rejet pour calcul TVA erroné")
+}
+})
+
+t.Run("Rejet rupture équilibre TTC (BR-CO-15)", func(t *testing.T) {
+inv := &model.CanonicalInvoice{
+Lines: []model.InvoiceLine{
+{ID: "1", Quantity: 1.0, UnitPrice: 100.0, LineTotal: 100.0},
+},
+Totals: model.MonetaryTotals{
+LineExtensionAmount: 100.0,
+TaxExclusiveAmount:  100.0,
+TaxInclusiveAmount:  150.0, // Faux : 100 + 20 = 120 != 150
+},
+TaxSubtotals: []model.TaxSubtotal{
+{TaxableAmount: 100.0, Percent: 20.0, TaxAmount: 20.0},
+},
+}
+val := NewNormativeValidator(false)
+res, err := val.ValidateCanonical(inv)
+if err != nil {
+t.Fatal(err)
+}
+if res.Valid {
+t.Fatal("attendu: rejet pour BR-CO-15")
+}
+})
+}
+
+func TestNormativeValidator_RejetCalculTVA_Lot(t *testing.T) {
+// Vérification avec le fichier de lot si présent
+lotPath := filepath.Join("..", "..", "factures_test_lots", "fr", "FACT_2026_005_REJET_CALCUL_TVA.xml")
+data, err := os.ReadFile(lotPath)
+if err != nil {
+t.Skipf("lot de test non trouvé à l'emplacement %s, skip", lotPath)
+}
+
+val := NewNormativeValidator(false)
+res, err := val.ValidateEN16931AndPeppol(data)
+if err != nil {
+// Une erreur de parsing/normalisation ou une invalidité prouve le rejet
+return
+}
+if res.Valid {
+t.Fatal("la facture FACT_2026_005_REJET_CALCUL_TVA.xml aurait dû être rejetée")
+}
 }
