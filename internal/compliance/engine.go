@@ -1,66 +1,60 @@
 package compliance
 
 import (
-"strings"
+	"fmt"
+	"strings"
 
-"einvoice-saas/internal/compliance/validators/ma"
-"einvoice-saas/internal/validator"
+	"einvoice-saas/internal/compliance/validators/ma"
+	"einvoice-saas/internal/model"
 )
 
-type ValidationResponse struct {
-Jurisdiction string                      `json:"jurisdiction"`
-Valid        bool                        `json:"valid"`
-ErrorsCount  int                         `json:"errors_count"`
-Warnings     int                         `json:"warnings_count"`
-Details      []validator.DiagnosticResult `json:"details"`
+// Dispatcher gère l'enregistrement et l'exécution des validateurs de juridictions
+type Dispatcher struct {
+	validators map[string]model.JurisdictionValidator
 }
 
-// InspectAndValidate identifie le pays cible (soit explicite, soit via les balises de flux)
-func InspectAndValidate(xmlPayload []byte, targetCountry string) ValidationResponse {
-country := strings.ToUpper(strings.TrimSpace(targetCountry))
-
-// Détection automatique si non renseigné
-if country == "" {
-content := string(xmlPayload)
-if strings.Contains(content, "urn:dgi.gov.ma") || strings.Contains(content, "MAD") {
-country = "MA"
-} else {
-country = "FR" // Défaut CIUS-FR
-}
+// NewDispatcher initialise le répartiteur avec les validateurs disponibles
+func NewDispatcher() *Dispatcher {
+	d := &Dispatcher{
+		validators: make(map[string]model.JurisdictionValidator),
+	}
+	// Enregistrement du profil Maroc canonique
+	d.Register(ma.NewMoroccoCanonicalValidator())
+	return d
 }
 
-switch country {
-case "MA":
-rep := ma.ValidateMoroccoUBL(xmlPayload)
-details := make([]validator.DiagnosticResult, 0, len(rep.Results))
-for _, r := range rep.Results {
-details = append(details, validator.DiagnosticResult{
-Code:         r.Code,
-Severity:     r.Severity,
-Path:         r.Path,
-Message:      r.Message,
-ActualValue:  r.ActualValue,
-ExpectedRule: r.ExpectedRule,
-})
-}
-return ValidationResponse{
-Jurisdiction: "MA",
-Valid:        rep.Valid,
-ErrorsCount:  rep.ErrorsCount,
-Warnings:     rep.WarningsCount,
-Details:      details,
+// Register ajoute ou remplace un validateur de juridiction
+func (d *Dispatcher) Register(v model.JurisdictionValidator) {
+	d.validators[strings.ToUpper(v.JurisdictionCode())] = v
 }
 
-case "FR":
-fallthrough
-default:
-// Repli sur le moteur EN 16931 / CIUS-FR existant
-return ValidationResponse{
-Jurisdiction: "FR",
-Valid:        true,
-ErrorsCount:  0,
-Warnings:     0,
-Details:      []validator.DiagnosticResult{},
-}
-}
+// Validate traite une facture canonique selon sa juridiction cible
+func (d *Dispatcher) Validate(inv *model.CanonicalInvoice) (model.ValidationReport, error) {
+	if inv == nil {
+		return model.ValidationReport{}, fmt.Errorf("facture canonique nulle")
+	}
+
+	jurisdiction := strings.ToUpper(strings.TrimSpace(inv.TargetJurisdiction))
+	if jurisdiction == "" {
+		jurisdiction = "FR" // Juridiction par défaut
+	}
+
+	validator, exists := d.validators[jurisdiction]
+	if !exists {
+		return model.ValidationReport{
+			Jurisdiction: jurisdiction,
+			Valid:        false,
+			Issues: []model.ValidationIssue{
+				{
+					RuleID:      "SYS-JURISDICTION-UNSUPPORTED",
+					Description: fmt.Sprintf("Aucun validateur actif configuré pour la juridiction: %s", jurisdiction),
+					Severity:    model.SeverityError,
+					Field:       "TargetJurisdiction",
+					Remediation: "Vérifier le code pays cible ou activer le CountryProfile correspondant.",
+				},
+			},
+		}, nil
+	}
+
+	return validator.Validate(inv), nil
 }
