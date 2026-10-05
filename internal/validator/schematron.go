@@ -2,6 +2,8 @@
 
 import (
 "fmt"
+
+"einvoice-saas/internal/validator/rules"
 )
 
 type ValidationProfile string
@@ -44,6 +46,24 @@ executor = NewDefaultXSLTExecutor()
 return &SchematronEngine{
 xsltExecutor: executor,
 }
+}
+
+// ValidateProfile résout automatiquement l'artefact normatif embarqué selon le profil ciblé
+func (e *SchematronEngine) ValidateProfile(xmlData []byte, profile ValidationProfile) (*SchematronReport, error) {
+var xsltPath string
+switch profile {
+case ProfileEN16931:
+xsltPath = rules.PathEN16931XSLT
+default:
+return nil, fmt.Errorf("schematron: profil non supporté: %s", profile)
+}
+
+xsltBytes, err := rules.LoadRuleAsset(xsltPath)
+if err != nil {
+return nil, fmt.Errorf("schematron: échec chargement règle [%s]: %w", xsltPath, err)
+}
+
+return e.ValidateSchematron(xmlData, xsltBytes, profile)
 }
 
 // ValidateSchematron applique la feuille XSLT compilée sur le document XML et parse le rapport SVRL
