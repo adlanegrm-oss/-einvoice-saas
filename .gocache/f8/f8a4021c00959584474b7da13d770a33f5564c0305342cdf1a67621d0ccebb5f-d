@@ -1,0 +1,12 @@
+./anchor.go
+./array.go
+./date.go
+./dict.go
+./layout.go
+./paperSize.go
+./pdfDocEncoding.go
+./slice.go
+./streamdict.go
+./string.go
+./types.go
+./utf16.go

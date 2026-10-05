@@ -1,0 +1,5 @@
+./facturx.go
+./facturx_incremental.go
+./facturx_pdfcpu.go
+./facturx_pdfcpu_test.go
+./facturx_test.go

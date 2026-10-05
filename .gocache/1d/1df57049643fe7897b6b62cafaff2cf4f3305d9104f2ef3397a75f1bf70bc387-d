@@ -1,0 +1,3 @@
+./facturx.go
+./facturx_incremental.go
+./facturx_pdfcpu.go

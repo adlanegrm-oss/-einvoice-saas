@@ -1,0 +1,11 @@
+{
+	"github.com/adlanegrm-oss/einvoice-saas/cmd/server": {
+		"printf": [
+			{
+				"posn": "D:\\einvoice-saas-release1\\einvoice-saas\\cmd\\server\\main.go:127:64",
+				"end": "D:\\einvoice-saas-release1\\einvoice-saas\\cmd\\server\\main.go:127:67",
+				"message": "fmt.Errorf call has arguments but no formatting directives"
+			}
+		]
+	}
+}

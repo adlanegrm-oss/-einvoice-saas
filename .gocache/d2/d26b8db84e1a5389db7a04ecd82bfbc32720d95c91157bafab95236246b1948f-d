@@ -1,0 +1,4 @@
+./ber.go
+./pkcs7.go
+./sign.go
+./verify.go

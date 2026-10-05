@@ -1,0 +1,5 @@
+./detect.go
+./en16931.go
+./facturx_extract.go
+./svrl_parser.go
+./validator.go

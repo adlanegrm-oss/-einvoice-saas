@@ -1,0 +1,21 @@
+# test log
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\factures
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\factures\20261004-054700-1910613e-facture_alpha.xml
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\traitement.log
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-beta\factures
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-beta\temporaire
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\factures
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-beta\factures\20261004-054700-1910613e-facture_alpha.xml
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\temporaire
+stat C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\temporaire\20261004-054700-33664712-draft_invoice.xml
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\traitement.log
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\temporaire
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\temporaire
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141
+open C:\Users\User\AppData\Local\Temp\archive-test-4012882141\tenant-alpha\temporaire
+open C:\Users\User\AppData\Local\Temp

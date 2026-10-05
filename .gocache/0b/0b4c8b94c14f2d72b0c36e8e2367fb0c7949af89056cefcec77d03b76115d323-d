@@ -1,0 +1,9 @@
+./archive_handler.go
+./auth_handler.go
+./handler.go
+./http.go
+./notifier.go
+./pipeline_handler.go
+./task_handler.go
+./validation_handler.go
+./pipeline_handler_test.go

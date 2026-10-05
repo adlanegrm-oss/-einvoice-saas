@@ -1,0 +1,11 @@
+# test log
+open C:\Users\User\AppData\Local\Temp\facturx-1714658367\factur-x.xml
+getenv AppData
+stat C:\Users\User\AppData\Roaming\pdfcpu
+open C:\Users\User\AppData\Roaming\pdfcpu\config.yml
+stat C:\Users\User\AppData\Roaming\pdfcpu\fonts
+open C:\Users\User\AppData\Roaming\pdfcpu\fonts
+stat C:\Users\User\AppData\Roaming\pdfcpu\certs
+open C:\Users\User\AppData\Roaming\pdfcpu\certs
+open C:\Users\User\AppData\Local\Temp\facturx-1714658367\factur-x.xml
+open C:\Users\User\AppData\Local\Temp

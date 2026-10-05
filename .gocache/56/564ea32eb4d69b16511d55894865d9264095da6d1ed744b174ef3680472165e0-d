@@ -1,0 +1,23 @@
+# test log
+getenv GOTMPDIR
+open D:\tmp_go
+getenv GOTMPDIR
+stat D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY\2026-06
+stat D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY
+stat D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001
+open D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY\2026-06\invoice.xml
+stat D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY\2026-06
+open D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY
+stat D:\tmp_go\TestPurgeCycle_ExecutionSuccess2344666493\001\HISTORY\2026-06
+open D:\tmp_go
+getenv GOTMPDIR
+open D:\tmp_go
+getenv GOTMPDIR
+stat D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY\2026-05
+stat D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY
+stat D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001
+open D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY\2026-05\residual.xml
+stat D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY\2026-05
+open D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY
+stat D:\tmp_go\TestPurgeCycle_CrashRecoveryDBPurged2589196792\001\HISTORY\2026-05
+open D:\tmp_go

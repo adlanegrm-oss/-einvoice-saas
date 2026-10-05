@@ -1,0 +1,5 @@
+./clearance.go
+./ksef.go
+./piste_oauth.go
+./ppf.go
+./piste_oauth_test.go

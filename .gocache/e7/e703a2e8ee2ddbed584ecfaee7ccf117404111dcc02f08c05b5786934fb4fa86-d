@@ -1,0 +1,3 @@
+./config.go
+./hardened_config.go
+./config_test.go
