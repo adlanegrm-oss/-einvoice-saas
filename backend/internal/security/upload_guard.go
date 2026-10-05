@@ -1,9 +1,8 @@
-package security
+﻿package security
 
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 )
@@ -19,14 +18,14 @@ const (
 	MaxInvoiceFileSize = 10 * 1024 * 1024 // 10 Mo
 )
 
-// ValidateUploadPayload filtre les uploads contre XXE, path traversal et vérifie les signatures magiques
+// ValidateUploadPayload filtre les uploads contre XXE, path traversal et vÃ©rifie les signatures magiques
 func ValidateUploadPayload(filename string, r io.Reader) ([]byte, error) {
 	// 1. Path traversal check
 	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 		return nil, ErrPathTraversal
 	}
 
-	// 2. Limite stricte de taille (prévention XML / Zip Bomb)
+	// 2. Limite stricte de taille (prÃ©vention XML / Zip Bomb)
 	limitedReader := io.LimitReader(r, MaxInvoiceFileSize+1)
 	data, err := io.ReadAll(limitedReader)
 	if err != nil {
@@ -54,3 +53,4 @@ func min(a, b int) int {
 	}
 	return b
 }
+

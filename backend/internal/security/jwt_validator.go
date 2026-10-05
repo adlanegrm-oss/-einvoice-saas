@@ -1,4 +1,4 @@
-package security
+﻿package security
 
 import (
 	"crypto/hmac"
@@ -37,7 +37,7 @@ func NewJWTValidator(secret []byte, expectedIssuer, expectedAud string) *JWTVali
 	}
 }
 
-// ValidateToken effectue une vérification cryptographique stricte (iss, aud, exp, nbf, HMAC whitelist)
+// ValidateToken effectue une vÃ©rification cryptographique stricte (iss, aud, exp, nbf, HMAC whitelist)
 func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) != 3 {
@@ -57,12 +57,12 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 		return nil, fmt.Errorf("jwt: invalid header json: %w", err)
 	}
 
-	// Whitelist stricte d'algorithme (prévention attaque 'none' ou injection asymétrique)
+	// Whitelist stricte d'algorithme (prÃ©vention attaque 'none' ou injection asymÃ©trique)
 	if header.Alg != "HS256" {
 		return nil, fmt.Errorf("jwt: algorithm %s is not permitted (only HS256 allowed)", header.Alg)
 	}
 
-	// Vérification de la signature HMAC-SHA256
+	// VÃ©rification de la signature HMAC-SHA256
 	signingInput := parts[0] + "." + parts[1]
 	expectedMac := hmac.New(sha256.New, v.secret)
 	expectedMac.Write([]byte(signingInput))
@@ -77,7 +77,7 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 		return nil, errors.New("jwt: signature mismatch")
 	}
 
-	// Décodage des claims
+	// DÃ©codage des claims
 	payloadJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("jwt: invalid payload encoding: %w", err)
@@ -90,22 +90,23 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 
 	now := time.Now().Unix()
 
-	// Vérification exp
+	// VÃ©rification exp
 	if claims.ExpiresAt <= now {
 		return nil, errors.New("jwt: token is expired")
 	}
-	// Vérification nbf
+	// VÃ©rification nbf
 	if claims.NotBefore > 0 && claims.NotBefore > now {
 		return nil, errors.New("jwt: token not active yet")
 	}
-	// Vérification issuer
+	// VÃ©rification issuer
 	if v.expectedIssuer != "" && claims.Issuer != v.expectedIssuer {
-		return nil, fmt.Sprintf("jwt: invalid issuer %s", claims.Issuer), errors.New("invalid issuer")
+		return nil, fmt.Errorf("jwt: invalid issuer %s", claims.Issuer)
 	}
-	// Vérification audience
+	// VÃ©rification audience
 	if v.expectedAud != "" && claims.Audience != v.expectedAud {
 		return nil, errors.New("jwt: invalid audience")
 	}
 
 	return &claims, nil
 }
+
