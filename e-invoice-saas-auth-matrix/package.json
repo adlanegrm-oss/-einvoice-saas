@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "e-invoice-saas-auth-matrix",
   "version": "1.0.0",
-  "description": "Matrice d'accès et profils pour la suite e-invoice-saas",
+  "description": "COMPLIANCE CARE and VALIDATION PLATFORM (CCandVP)",
   "type": "module",
   "scripts": {
     "dev": "vite",

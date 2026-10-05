@@ -1,4 +1,4 @@
-﻿# e-Invoice SaaS — Plateforme B2B de Facturation Électronique & Matrice RBAC
+﻿# COMPLIANCE CARE and VALIDATION PLATFORM (CCandVP)
 
 Solution SaaS modulaire conçue pour la conformité réglementaire de facturation électronique (EN 16931-1:2017 & profil CIUS-FR v2.0), avec multi-tenancy, matrice RBAC granulaire par scope géographique, et traçabilité immuable (RFC 3161).
 
@@ -25,3 +25,4 @@ L'accès aux ressources est évalué dynamiquement selon trois scopes :
 * **EN 16931-1:2017** : Norme sémantique européenne pour la facturation électronique.
 * **CIUS-FR v2.0** : Spécifications nationales françaises (UBL 2.1, CII D16B, Factur-X / PDF/A-3).
 * **RFC 3161** : Horodatage électronique qualifié pour archivage à valeur probante.
+
