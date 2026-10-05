@@ -1,4 +1,4 @@
-﻿package ma
+package ma
 
 import (
 "encoding/xml"

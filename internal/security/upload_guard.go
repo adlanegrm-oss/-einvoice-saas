@@ -3,7 +3,6 @@ package security
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 )
