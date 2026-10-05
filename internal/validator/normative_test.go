@@ -131,7 +131,7 @@ t.Fatal("attendu: rejet pour BR-CO-15")
 
 func TestNormativeValidator_RejetCalculTVA_Lot(t *testing.T) {
 // Vérification avec le fichier de lot si présent
-lotPath := filepath.Join("..", "..", "factures_test_lots", "fr", "FACT_2026_005_REJET_CALCUL_TVA.xml")
+lotPath := filepath.Join("..", "..", "factures_test_lots", "FACT_2026_005_REJET_CALCUL_TVA.xml")
 data, err := os.ReadFile(lotPath)
 if err != nil {
 t.Skipf("lot de test non trouvé à l'emplacement %s, skip", lotPath)
