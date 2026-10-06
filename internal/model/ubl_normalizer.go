@@ -124,7 +124,7 @@ Lines: make([]InvoiceLine, 0, len(doc.InvoiceLines)),
 }
 
 // Affectation des identifiants nationaux
-if jurisdiction == "MA" {
+if jurisdiction == "MA" || jurisdiction == "FR" {
 invoice.Seller.NationalID = sellerIDVal
 invoice.Buyer.NationalID = buyerIDVal
 }
