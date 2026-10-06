@@ -1,3 +1,0 @@
-./outbox_worker.go
-./pool.go
-./pool_test.go

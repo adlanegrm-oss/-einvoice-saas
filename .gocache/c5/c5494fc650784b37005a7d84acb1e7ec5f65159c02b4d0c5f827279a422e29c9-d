@@ -1,6 +1,0 @@
-./emission_service.go
-./invoice_emitter.go
-./invoice_service.go
-./multiformat.go
-./pipeline.go
-./seq_gen.go

@@ -1,4 +1,0 @@
-./access_point_gateway.go
-./client.go
-./outbox.go
-./worker.go

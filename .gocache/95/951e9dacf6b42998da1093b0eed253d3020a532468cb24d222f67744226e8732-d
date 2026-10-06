@@ -1,7 +1,0 @@
-./buffer.go
-./ccitt_rle.go
-./compress.go
-./consts.go
-./lzw_writer.go
-./reader.go
-./writer.go

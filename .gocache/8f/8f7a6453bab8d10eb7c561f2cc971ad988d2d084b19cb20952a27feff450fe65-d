@@ -1,9 +1,0 @@
-./ascii85Decode.go
-./asciiHexDecode.go
-./ccittDecode.go
-./dctDecode.go
-./filter.go
-./flateDecode.go
-./lzwDecode.go
-./paeth.go
-./runLengthDecode.go

@@ -1,5 +1,0 @@
-./password.go
-./ratelimit.go
-./store.go
-./token.go
-./auth_test.go
