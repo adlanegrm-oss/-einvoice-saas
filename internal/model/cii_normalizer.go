@@ -194,14 +194,15 @@ dueDate = &parsedDue
 }
 
 canonical := &CanonicalInvoice{
-ID:                 strings.TrimSpace(doc.ExchangedDocument.ID),
-InvoiceNumber:      strings.TrimSpace(doc.ExchangedDocument.ID),
-IssueDate:          issueDate,
-DueDate:            dueDate,
-Currency:           strings.TrimSpace(settlement.InvoiceCurrencyCode),
-SourceSyntax:       "CII-D16B",
-TargetJurisdiction: "FR",
-PaymentReference:   strings.TrimSpace(settlement.PaymentReference),
+		ID:                        strings.TrimSpace(doc.ExchangedDocument.ID),
+		InvoiceNumber:             strings.TrimSpace(doc.ExchangedDocument.ID),
+		InvoiceTypeCode:           strings.TrimSpace(doc.ExchangedDocument.TypeCode),
+		IssueDate:                 issueDate, // <--- LIGNE EN DOUBLE À SUPPRIMER
+		DueDate:                   dueDate,
+		Currency:                  strings.TrimSpace(settlement.InvoiceCurrencyCode),
+		SourceSyntax:              "CII-D16B",
+		TargetJurisdiction:        "FR",
+		PaymentReference:          strings.TrimSpace(settlement.PaymentReference),
 
 Seller: Party{
 Name:        strings.TrimSpace(agreement.SellerTradeParty.Name),

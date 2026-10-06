@@ -59,6 +59,7 @@ type rawUBLDocument struct {
 XMLName                 xml.Name         `xml:"Invoice"`
 CustomizationID         string           `xml:"CustomizationID"`
 ID                      string           `xml:"ID"`
+InvoiceTypeCode         string           `xml:"InvoiceTypeCode"`
 IssueDate               string           `xml:"IssueDate"`
 DocumentCurrencyCode    string           `xml:"DocumentCurrencyCode"`
 AccountingSupplierParty struct {
@@ -97,6 +98,7 @@ buyerIDVal := strings.TrimSpace(doc.AccountingCustomerParty.Party.PartyIdentific
 invoice := &CanonicalInvoice{
 ID:                 doc.ID,
 InvoiceNumber:      doc.ID,
+InvoiceTypeCode:    strings.TrimSpace(doc.InvoiceTypeCode),
 IssueDate:          date,
 Currency:           strings.TrimSpace(doc.DocumentCurrencyCode),
 SourceSyntax:       "UBL-2.1",
