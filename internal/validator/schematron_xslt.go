@@ -85,6 +85,11 @@ type ublInvoiceDoc struct {
 			} `xml:"PartyTaxScheme"`
 		} `xml:"Party"`
 	} `xml:"AccountingSupplierParty"`
+	AccountingCustomerParty struct {
+		Party struct {
+			PartyIdentification []ublPartyID `xml:"PartyIdentification>ID"`
+		} `xml:"Party"`
+	} `xml:"AccountingCustomerParty"`
 	TaxTotal []struct {
 		TaxSubtotal []struct {
 			TaxableAmount struct {
@@ -127,6 +132,20 @@ type ciiInvoiceDoc struct {
 					} `xml:"ID"`
 				} `xml:"SpecifiedTaxRegistration"`
 			} `xml:"SellerTradeParty"`
+			BuyerTradeParty struct {
+				SpecifiedLegalOrganization struct {
+					ID struct {
+						SchemeID string `xml:"schemeID,attr"`
+						Value    string `xml:",chardata"`
+					} `xml:"ID"`
+				} `xml:"SpecifiedLegalOrganization"`
+				SpecifiedTaxRegistration []struct {
+					ID struct {
+						SchemeID string `xml:"schemeID,attr"`
+						Value    string `xml:",chardata"`
+					} `xml:"ID"`
+				} `xml:"SpecifiedTaxRegistration"`
+			} `xml:"BuyerTradeParty"`
 		} `xml:"ApplicableHeaderTradeAgreement"`
 		ApplicableHeaderTradeSettlement struct {
 			ApplicableTradeTax []struct {
@@ -156,6 +175,7 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 	var customID string
 	var sellerTaxID string
 	var sellerSiret string
+	var buyerSiret string
 	var breakdown []taxBreakdownItem
 	var isDocFound bool
 
@@ -168,6 +188,12 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 			val := strings.TrimSpace(pi.Value)
 			if val != "" {
 				sellerSiret = val
+			}
+		}
+		for _, pi := range ublDoc.AccountingCustomerParty.Party.PartyIdentification {
+			val := strings.TrimSpace(pi.Value)
+			if val != "" {
+				buyerSiret = val
 			}
 		}
 		for _, pts := range ublDoc.AccountingSupplierParty.Party.PartyTaxScheme {
@@ -191,6 +217,7 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 		if errCII := xml.Unmarshal(xmlInput, &ciiDoc); errCII == nil && ciiDoc.XMLName.Local == "CrossIndustryInvoice" {
 			isDocFound = true
 			customID = strings.TrimSpace(ciiDoc.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value)
+			
 			sellerParty := ciiDoc.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.SellerTradeParty
 			if sVal := strings.TrimSpace(sellerParty.SpecifiedLegalOrganization.ID.Value); len(sVal) == 14 {
 				sellerSiret = sVal
@@ -202,6 +229,17 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 				}
 				if reg.ID.SchemeID == "VA" || strings.HasPrefix(val, "FR") {
 					sellerTaxID = val
+				}
+			}
+
+			buyerParty := ciiDoc.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.BuyerTradeParty
+			if bVal := strings.TrimSpace(buyerParty.SpecifiedLegalOrganization.ID.Value); len(bVal) == 14 {
+				buyerSiret = bVal
+			}
+			for _, reg := range buyerParty.SpecifiedTaxRegistration {
+				val := strings.TrimSpace(reg.ID.Value)
+				if reg.ID.SchemeID == "0009" || len(val) == 14 {
+					buyerSiret = val
 				}
 			}
 
@@ -219,7 +257,7 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 		return nil, fmt.Errorf("native validator: unsupported or unparseable XML document")
 	}
 
-	// Détection du SIRET dans le bloc fournisseur UBL
+	// Détection précise du SIRET dans le bloc fournisseur UBL
 	supplierBlockRegex := regexp.MustCompile(`(?s)<cac:AccountingSupplierParty>.*?</cac:AccountingSupplierParty>`)
 	if match := supplierBlockRegex.Find(xmlInput); match != nil {
 		idRegex := regexp.MustCompile(`<cac:PartyIdentification>\s*<cbc:ID[^>]*>(\d{14})</cbc:ID>\s*</cac:PartyIdentification>`)
@@ -227,6 +265,17 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 			sellerSiret = string(idMatch[1])
 		} else {
 			sellerSiret = ""
+		}
+	}
+
+	// Détection précise du SIRET dans le bloc client UBL
+	customerBlockRegex := regexp.MustCompile(`(?s)<cac:AccountingCustomerParty>.*?</cac:AccountingCustomerParty>`)
+	if match := customerBlockRegex.Find(xmlInput); match != nil {
+		idRegex := regexp.MustCompile(`<cac:PartyIdentification>\s*<cbc:ID[^>]*>(\d{14})</cbc:ID>\s*</cac:PartyIdentification>`)
+		if idMatch := idRegex.FindSubmatch(match); len(idMatch) > 1 {
+			buyerSiret = string(idMatch[1])
+		} else {
+			buyerSiret = ""
 		}
 	}
 
@@ -240,9 +289,18 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 		failedAsserts = append(failedAsserts, `<failed-assert id="BR-CO-09" location="/*[1]" flag="fatal"><text>[BR-CO-09]-The Seller VAT identifier (BT-31), the Seller tax representative VAT identifier (BT-63) or the Seller tax registration identifier (BT-32) shall be present.</text></failed-assert>`)
 	}
 
-	// [BR-FR-01] Rejet si absence de SIRET vendeur
+	// Profil CIUS-FR CTC
+	sheetStr := strings.ToLower(string(xsltSheet))
+	isCiusFR := strings.Contains(sheetStr, "cius") || strings.Contains(sheetStr, "fr")
+
+	// [BR-FR-01] SIRET vendeur obligatoire
 	if strings.TrimSpace(sellerSiret) == "" {
 		failedAsserts = append(failedAsserts, `<failed-assert id="BR-FR-01" location="/*[1]" flag="fatal"><text>[BR-FR-01]-The Seller identifier (BT-29) shall be present and must be a SIRET number under CIUS-FR.</text></failed-assert>`)
+	}
+
+	// [BR-FR-03] SIRET acheteur obligatoire sous CIUS-FR
+	if isCiusFR && strings.TrimSpace(buyerSiret) == "" {
+		failedAsserts = append(failedAsserts, `<failed-assert id="BR-FR-03" location="/*[1]" flag="fatal"><text>[BR-FR-03]-The Buyer identifier (BT-46) shall be present and must be a SIRET number under CIUS-FR.</text></failed-assert>`)
 	}
 
 	// [BR-CO-17]
