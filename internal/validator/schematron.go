@@ -48,12 +48,14 @@ xsltExecutor: executor,
 }
 }
 
-// ValidateProfile résout automatiquement l'artefact normatif embarqué selon le profil ciblé
+// ValidateProfile résout automatiquement l'artefact normatif selon le profil ciblé
 func (e *SchematronEngine) ValidateProfile(xmlData []byte, profile ValidationProfile) (*SchematronReport, error) {
 var xsltPath string
 switch profile {
 case ProfileEN16931:
 xsltPath = rules.PathEN16931XSLT
+case ProfileCIUSFR:
+xsltPath = rules.PathCIUSFRXSLT
 default:
 return nil, fmt.Errorf("schematron: profil non supporté: %s", profile)
 }
@@ -66,7 +68,6 @@ return nil, fmt.Errorf("schematron: échec chargement règle [%s]: %w", xsltPath
 return e.ValidateSchematron(xmlData, xsltBytes, profile)
 }
 
-// ValidateSchematron applique la feuille XSLT compilée sur le document XML et parse le rapport SVRL
 func (e *SchematronEngine) ValidateSchematron(xmlData []byte, xsltData []byte, profile ValidationProfile) (*SchematronReport, error) {
 if len(xmlData) == 0 {
 return nil, fmt.Errorf("schematron: document XML vide")
