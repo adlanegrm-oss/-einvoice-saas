@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"einvoice-saas/internal/app"
 	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/model"
 	"einvoice-saas/internal/service"
@@ -33,13 +34,13 @@ func loadTestXML(t *testing.T) []byte {
 }
 
 func buildTestRouter() http.Handler {
-	keyStore := &InMemoryKeyStore{}
+	keyStore := &app.InMemoryKeyStore{}
 	schematronEngine := validator.NewSchematronEngine(nil)
 	normativeValidator := validator.NewNormativeValidator(true)
 	frFiscalValidator := fr.NewFranceCanonicalValidator()
 
 	valFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
-		resp, err := executeValidationPipeline(xmlData, profile, schematronEngine, normativeValidator, frFiscalValidator)
+		resp, err := app.ExecuteValidationPipeline(xmlData, profile, schematronEngine, normativeValidator, frFiscalValidator)
 		if err != nil {
 			return "", nil, false, resp, err
 		}
@@ -47,13 +48,13 @@ func buildTestRouter() http.Handler {
 	}
 
 	invoiceSvc := service.NewInvoiceService(
-		newInMemInvoiceRepo(),
-		newInMemEventRepo(),
-		newInMemIdemRepo(),
+		app.NewInMemInvoiceRepo(),
+		app.NewInMemEventRepo(),
+		app.NewInMemIdemRepo(),
 		valFn,
 	)
 
-	return setupRouter(keyStore, invoiceSvc)
+	return app.SetupRouter(keyStore, invoiceSvc)
 }
 
 func TestGatewayEndpoints_Integration(t *testing.T) {
@@ -118,7 +119,7 @@ func TestGatewayEndpoints_Integration(t *testing.T) {
 			t.Fatalf("attendu 200 OK, obtenu %d: %s", rec.Code, rec.Body.String())
 		}
 
-		var resp UnifiedValidationResponse
+		var resp app.UnifiedValidationResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 			t.Fatalf("erreur deserialisation JSON: %v", err)
 		}
