@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ErrFileTooLarge     = errors.New("upload: file exceeds maximum allowed size")
-	ErrXXEDetected      = errors.New("upload: XXE injection detected in XML payload")
-	ErrInvalidFileType  = errors.New("upload: magic bytes do not match declared content type")
-	ErrPathTraversal    = errors.New("upload: dangerous path traversal filename detected")
+	ErrFileTooLarge    = errors.New("upload: file exceeds maximum allowed size")
+	ErrXXEDetected     = errors.New("upload: XXE injection detected in XML payload")
+	ErrInvalidFileType = errors.New("upload: magic bytes do not match declared content type")
+	ErrPathTraversal   = errors.New("upload: dangerous path traversal filename detected")
 )
 
 const (

@@ -12,15 +12,15 @@ import (
 )
 
 type JWTClaims struct {
-	Issuer    string   `json:"iss"`
-	Subject   string   `json:"sub"`
-	Audience  string   `json:"aud"`
-	TenantID  string   `json:"tenant_id"`
-	Role      string   `json:"role"`
-	JTI       string   `json:"jti"`
-	ExpiresAt int64    `json:"exp"`
-	NotBefore int64    `json:"nbf"`
-	IssuedAt  int64    `json:"iat"`
+	Issuer    string `json:"iss"`
+	Subject   string `json:"sub"`
+	Audience  string `json:"aud"`
+	TenantID  string `json:"tenant_id"`
+	Role      string `json:"role"`
+	JTI       string `json:"jti"`
+	ExpiresAt int64  `json:"exp"`
+	NotBefore int64  `json:"nbf"`
+	IssuedAt  int64  `json:"iat"`
 }
 
 type JWTValidator struct {

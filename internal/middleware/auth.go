@@ -18,6 +18,7 @@ KeyIDContextKey    contextKey = "api_key_id"
 
 type TenantRecord struct {
 ID      string
+KeyID   string
 Active  bool
 KeyHash string
 }
@@ -52,12 +53,12 @@ keyHash := hex.EncodeToString(hashBytes[:])
 
 tenant, err := store.FindTenantByKeyHash(r.Context(), keyHash)
 if err != nil || tenant == nil || !tenant.Active {
-http.Error(w, `{"error":"forbidden","message":"invalid or inactive api key"}`, http.StatusForbidden)
+http.Error(w, `{"error":"unauthorized","message":"invalid or inactive api key"}`, http.StatusUnauthorized)
 return
 }
 
 ctx := context.WithValue(r.Context(), TenantIDContextKey, tenant.ID)
-ctx = context.WithValue(ctx, KeyIDContextKey, keyHash[:12])
+ctx = context.WithValue(ctx, KeyIDContextKey, tenant.KeyID)
 
 next.ServeHTTP(w, r.WithContext(ctx))
 })

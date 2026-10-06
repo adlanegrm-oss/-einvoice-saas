@@ -6,6 +6,7 @@ import (
 	"einvoice-saas/internal/app"
 	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/model"
+	"einvoice-saas/internal/security"
 	"einvoice-saas/internal/service"
 	"einvoice-saas/internal/validator"
 )
@@ -30,7 +31,7 @@ func init() {
 	idemRepo := app.NewInMemIdemRepo()
 
 	invoiceSvc := service.NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
-	keyStore := &app.InMemoryKeyStore{}
+	keyStore := security.NewInMemoryKeyStore()
 
 	appHandler = app.SetupRouter(keyStore, invoiceSvc)
 }

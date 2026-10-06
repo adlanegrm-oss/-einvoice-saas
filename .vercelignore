@@ -1,21 +1,8 @@
-﻿# Fichiers volumineux et archives de factures
-factures_test_lots/
-data/
-archives/
-*.pdf
-*.zip
-*.tar.gz
-
-# Binaires et dossiers compilés
+﻿.git
+.gotmp
 *.exe
 *.test
 bin/
-dist/
-
-# Environnement et Git
-.git/
-.github/
-.vscode/
-
-# Schémas lourds non nécessaires à l'exécution web
-schemas/
+migrations/
+factures_test_lots/
+node_modules/

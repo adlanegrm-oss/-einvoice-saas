@@ -21,15 +21,6 @@ import (
 	"einvoice-saas/internal/validator"
 )
 
-type InMemoryKeyStore struct{}
-
-func (s *InMemoryKeyStore) FindTenantByKeyHash(ctx context.Context, hash string) (*middleware.TenantRecord, error) {
-	return &middleware.TenantRecord{
-		ID:     "tenant_demo_erp",
-		Active: true,
-	}, nil
-}
-
 type UnifiedValidationResponse struct {
 	Valid            bool                        `json:"valid"`
 	Syntax           string                      `json:"syntax"`

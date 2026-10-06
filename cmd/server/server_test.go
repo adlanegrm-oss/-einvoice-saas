@@ -13,9 +13,12 @@ import (
 	"einvoice-saas/internal/app"
 	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/model"
+	"einvoice-saas/internal/security"
 	"einvoice-saas/internal/service"
 	"einvoice-saas/internal/validator"
 )
+
+const testAPIToken = "sk_test_demo_live_gateway_token_123456789"
 
 func loadTestXML(t *testing.T) []byte {
 	paths := []string{
@@ -34,7 +37,9 @@ func loadTestXML(t *testing.T) []byte {
 }
 
 func buildTestRouter() http.Handler {
-	keyStore := &app.InMemoryKeyStore{}
+	keyStore := security.NewInMemoryKeyStore()
+	keyStore.AddKey(testAPIToken, "tenant_test_001", true)
+
 	schematronEngine := validator.NewSchematronEngine(nil)
 	normativeValidator := validator.NewNormativeValidator(true)
 	frFiscalValidator := fr.NewFranceCanonicalValidator()
@@ -59,7 +64,7 @@ func buildTestRouter() http.Handler {
 
 func TestGatewayEndpoints_Integration(t *testing.T) {
 	handler := buildTestRouter()
-	validToken := "sk_test_demo_live_gateway_token_123456789"
+	validToken := testAPIToken
 
 	t.Run("Validate_Rejet_Sans_Cle_API", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/invoices/validate", bytes.NewBuffer([]byte("<dummy/>")))
@@ -102,6 +107,7 @@ func TestGatewayEndpoints_Integration(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 			t.Fatalf("JSON invalide: %v", err)
 		}
+
 		if resp.Status != "rejected" {
 			t.Fatalf("attendu status 'rejected', obtenu: %v", resp.Status)
 		}
@@ -127,9 +133,11 @@ func TestGatewayEndpoints_Integration(t *testing.T) {
 		if !resp.Valid {
 			t.Fatalf("la facture conforme a ete marquee invalide")
 		}
+
 		if resp.Syntax != "UBL-2.1" {
 			t.Errorf("syntaxe attendue UBL-2.1, obtenu: %s", resp.Syntax)
 		}
+
 		if resp.CanonicalInvoice == nil {
 			t.Fatalf("modele canonique manquant dans la reponse")
 		}
@@ -159,9 +167,11 @@ func TestGatewayEndpoints_Integration(t *testing.T) {
 		if resp.Status != "accepted" {
 			t.Errorf("statut attendu 'accepted', obtenu: %s", resp.Status)
 		}
+
 		if resp.DocumentSHA256 != expectedSHA256 {
 			t.Errorf("SHA-256 divergent !\nattendu : %s\nobtenu  : %s", expectedSHA256, resp.DocumentSHA256)
 		}
+
 		if resp.AuditHash == "" {
 			t.Errorf("audit_hash manquant dans la reponse d'ingestion")
 		}
