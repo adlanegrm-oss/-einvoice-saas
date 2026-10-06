@@ -6,18 +6,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
+	"sync"
 
 	"einvoice-saas/internal/compliance/validators/fr"
-	"einvoice-saas/internal/evidence"
 	"einvoice-saas/internal/middleware"
 	"einvoice-saas/internal/model"
 	"einvoice-saas/internal/parser"
+	"einvoice-saas/internal/repository"
+	"einvoice-saas/internal/repository/postgres"
+	"einvoice-saas/internal/service"
 	"einvoice-saas/internal/validator"
 )
 
@@ -38,15 +41,6 @@ type UnifiedValidationResponse struct {
 	ArithmeticReport *validator.ValidationResult `json:"arithmetic_report,omitempty"`
 	FiscalReport     *model.ValidationReport     `json:"fiscal_report,omitempty"`
 	CanonicalInvoice *model.CanonicalInvoice     `json:"canonical_invoice,omitempty"`
-}
-
-type IngestionResponse struct {
-	Status         string                     `json:"status"`
-	InvoiceID      string                     `json:"invoice_id"`
-	TenantID       string                     `json:"tenant_id"`
-	DocumentSHA256 string                     `json:"document_sha256"`
-	AuditHash      string                     `json:"audit_hash"`
-	Validation     *UnifiedValidationResponse `json:"validation,omitempty"`
 }
 
 func executeValidationPipeline(
@@ -101,9 +95,7 @@ func executeValidationPipeline(
 		response.Valid = false
 	}
 
-	// 4. Validation fiscale juridique nationale
-	// Les règles fiscales françaises sont spécifiques à CIUS-FR.
-	// Le profil EN16931 reste juridiction-neutre.
+	// 4. Validation fiscale juridique nationale (CIUS-FR uniquement)
 	if profile == validator.ProfileCIUSFR {
 		fiscalReport := frFiscalValidator.Validate(canonical)
 		response.FiscalReport = &fiscalReport
@@ -115,13 +107,127 @@ func executeValidationPipeline(
 	return response, nil
 }
 
-func setupRouter(keyStore middleware.APIKeyStore) http.Handler {
+// Implementations in-memory de repli pour les tests ou le mode sans base active
+type inMemInvoiceRepo struct {
+	mu   sync.Mutex
+	data map[string]*repository.InvoiceRecord
+}
+
+func newInMemInvoiceRepo() *inMemInvoiceRepo {
+	return &inMemInvoiceRepo{data: make(map[string]*repository.InvoiceRecord)}
+}
+
+func (r *inMemInvoiceRepo) Create(ctx context.Context, inv *repository.InvoiceRecord) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := inv.TenantID + ":" + inv.ID
+	if _, ok := r.data[key]; ok {
+		return repository.ErrDuplicateBusiness
+	}
+	r.data[key] = inv
+	return nil
+}
+
+func (r *inMemInvoiceRepo) GetByID(ctx context.Context, tenantID, id string) (*repository.InvoiceRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	inv, ok := r.data[tenantID+":"+id]
+	if !ok {
+		return nil, repository.ErrNotFound
+	}
+	return inv, nil
+}
+
+func (r *inMemInvoiceRepo) GetBySHA256(ctx context.Context, tenantID, sha256Hash string) (*repository.InvoiceRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, inv := range r.data {
+		if inv.TenantID == tenantID && inv.DocumentSHA256 == sha256Hash {
+			return inv, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *inMemInvoiceRepo) UpdateStatus(ctx context.Context, tenantID, id string, target repository.InvoiceStatus) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	inv, ok := r.data[tenantID+":"+id]
+	if !ok {
+		return repository.ErrNotFound
+	}
+	inv.Status = target
+	return nil
+}
+
+type inMemEventRepo struct {
+	mu   sync.Mutex
+	data map[string][]repository.InvoiceEventRecord
+}
+
+func newInMemEventRepo() *inMemEventRepo {
+	return &inMemEventRepo{data: make(map[string][]repository.InvoiceEventRecord)}
+}
+
+func (r *inMemEventRepo) Append(ctx context.Context, ev *repository.InvoiceEventRecord) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := ev.TenantID + ":" + ev.InvoiceID
+	r.data[key] = append(r.data[key], *ev)
+	return nil
+}
+
+func (r *inMemEventRepo) GetHistory(ctx context.Context, tenantID, invoiceID string) ([]repository.InvoiceEventRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.data[tenantID+":"+invoiceID], nil
+}
+
+func (r *inMemEventRepo) GetLatestSequence(ctx context.Context, tenantID, invoiceID string) (int, string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	events := r.data[tenantID+":"+invoiceID]
+	if len(events) == 0 {
+		return 0, "", nil
+	}
+	last := events[len(events)-1]
+	return last.Sequence, last.CurrentHash, nil
+}
+
+type inMemIdemRepo struct {
+	mu   sync.Mutex
+	data map[string]*repository.IdempotencyRecord
+}
+
+func newInMemIdemRepo() *inMemIdemRepo {
+	return &inMemIdemRepo{data: make(map[string]*repository.IdempotencyRecord)}
+}
+
+func (r *inMemIdemRepo) Save(ctx context.Context, rec *repository.IdempotencyRecord) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.data[rec.TenantID+":"+rec.Key] = rec
+	return nil
+}
+
+func (r *inMemIdemRepo) Get(ctx context.Context, tenantID, key string) (*repository.IdempotencyRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rec, ok := r.data[tenantID+":"+key]
+	if !ok {
+		return nil, repository.ErrNotFound
+	}
+	return rec, nil
+}
+
+func setupRouter(keyStore middleware.APIKeyStore, invoiceSvc *service.InvoiceService) http.Handler {
 	mux := http.NewServeMux()
 
 	schematronEngine := validator.NewSchematronEngine(nil)
 	normativeValidator := validator.NewNormativeValidator(true)
 	frFiscalValidator := fr.NewFranceCanonicalValidator()
 
+	// Validation stateless
 	mux.HandleFunc("POST /v1/invoices/validate", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -162,6 +268,7 @@ func setupRouter(keyStore middleware.APIKeyStore) http.Handler {
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 
+	// Ingestion persistée avec machine à états et audit
 	mux.HandleFunc("POST /v1/invoices", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		tenantID, _ := middleware.GetTenantID(r.Context())
@@ -176,65 +283,61 @@ func setupRouter(keyStore middleware.APIKeyStore) http.Handler {
 			return
 		}
 
-		hashBytes := sha256.Sum256(xmlData)
-		docSHA256 := hex.EncodeToString(hashBytes[:])
-
 		profileParam := r.URL.Query().Get("profile")
 		profile := validator.ProfileCIUSFR
 		if strings.EqualFold(profileParam, string(validator.ProfileEN16931)) {
 			profile = validator.ProfileEN16931
 		}
 
-		validationResp, err := executeValidationPipeline(xmlData, profile, schematronEngine, normativeValidator, frFiscalValidator)
+		idempotencyKey := r.Header.Get("Idempotency-Key")
+
+		cmd := service.IngestionCommand{
+			TenantID:       tenantID,
+			IdempotencyKey: idempotencyKey,
+			Profile:        profile,
+			RawXML:         xmlData,
+			Actor:          "api_key_gateway",
+		}
+
+		result, err := invoiceSvc.IngestInvoice(r.Context(), cmd)
 		if err != nil {
+			if errors.Is(err, service.ErrDuplicateDocument) {
+				w.WriteHeader(http.StatusConflict)
+				_ = json.NewEncoder(w).Encode(map[string]string{
+					"error":   "duplicate_document",
+					"message": "ce document a deja ete ingere pour ce tenant",
+				})
+				return
+			}
+			if errors.Is(err, service.ErrIdempotencyConflict) {
+				w.WriteHeader(http.StatusConflict)
+				_ = json.NewEncoder(w).Encode(map[string]string{
+					"error":   "idempotency_conflict",
+					"message": "la cle d'idempotence a deja ete utilisee avec un document different",
+				})
+				return
+			}
+
+			h := sha256.Sum256(xmlData)
+			docSHA256 := hex.EncodeToString(h[:])
+
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"status":          "rejected",
 				"error":           "invoice_pipeline_failed",
 				"document_sha256": docSHA256,
-				"validation":      validationResp,
 				"message":         err.Error(),
 			})
 			return
 		}
-		if !validationResp.Valid {
+
+		if result.Status == "rejected" {
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":          "rejected",
-				"error":           "invoice_compliance_failed",
-				"document_sha256": docSHA256,
-				"validation":      validationResp,
-			})
-			return
+		} else {
+			w.WriteHeader(http.StatusAccepted)
 		}
 
-		invoiceNumber := validationResp.CanonicalInvoice.InvoiceNumber
-		if invoiceNumber == "" {
-			invoiceNumber = "INV-" + time.Now().Format("20060102150405")
-		}
-
-		ev := evidence.AuditEvent{
-			EventID:        "ev_ingest_" + time.Now().Format("150405.000"),
-			TenantID:       tenantID,
-			InvoiceID:      invoiceNumber,
-			EventType:      "INVOICE_INGESTED",
-			Actor:          "api_key_gateway",
-			TimestampUTC:   time.Now().UTC(),
-			DocumentSHA256: docSHA256,
-			PayloadSummary: fmt.Sprintf("Syntax: %s, Profile: %s", validationResp.Syntax, profile),
-			PreviousHash:   "0000000000000000000000000000000000000000000000000000000000000000",
-		}
-		ev.CurrentHash = evidence.CalculateChainHash(&ev)
-
-		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(IngestionResponse{
-			Status:         "accepted",
-			InvoiceID:      invoiceNumber,
-			TenantID:       tenantID,
-			DocumentSHA256: docSHA256,
-			AuditHash:      ev.CurrentHash,
-			Validation:     validationResp,
-		})
+		_ = json.NewEncoder(w).Encode(result)
 	})
 
 	return middleware.RequireAPIKey(keyStore)(mux)
@@ -246,10 +349,45 @@ func main() {
 		port = "8080"
 	}
 
-	keyStore := &InMemoryKeyStore{}
-	handler := setupRouter(keyStore)
+	schematronEngine := validator.NewSchematronEngine(nil)
+	normativeValidator := validator.NewNormativeValidator(true)
+	frFiscalValidator := fr.NewFranceCanonicalValidator()
 
-	log.Printf("[READY] E-Invoicing Gateway démarrée sur le port %s", port)
+	valFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
+		resp, err := executeValidationPipeline(xmlData, profile, schematronEngine, normativeValidator, frFiscalValidator)
+		if err != nil {
+			return "", nil, false, resp, err
+		}
+		return resp.Syntax, resp.CanonicalInvoice, resp.Valid, resp, nil
+	}
+
+	var invRepo repository.InvoiceRepository
+	var evtRepo repository.EventRepository
+	var idemRepo repository.IdempotencyRepository
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL != "" {
+		db, err := postgres.OpenDB(dbURL)
+		if err != nil {
+			log.Fatalf("PostgreSQL connection failed: %v", err)
+		}
+		invRepo = postgres.NewInvoiceRepo(db)
+		evtRepo = postgres.NewEventRepo(db)
+		idemRepo = postgres.NewIdempotencyRepo(db)
+		log.Printf("[PERSISTENCE] PostgreSQL connecte avec succes")
+	} else {
+		invRepo = newInMemInvoiceRepo()
+		evtRepo = newInMemEventRepo()
+		idemRepo = newInMemIdemRepo()
+		log.Printf("[PERSISTENCE] Mode In-Memory actif (DATABASE_URL non defini)")
+	}
+
+	invoiceSvc := service.NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
+
+	keyStore := &InMemoryKeyStore{}
+	handler := setupRouter(keyStore, invoiceSvc)
+
+	log.Printf("[READY] E-Invoicing Gateway demarree sur le port %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
