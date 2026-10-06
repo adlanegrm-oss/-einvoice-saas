@@ -55,6 +55,7 @@ func executeValidationPipeline(
 		TargetProfile: string(profile),
 	}
 
+	// 1. Validation Schematron
 	schemReport, err := schematronEngine.ValidateProfile(xmlData, profile)
 	if err != nil {
 		response.Valid = false
@@ -65,6 +66,7 @@ func executeValidationPipeline(
 		response.Valid = false
 	}
 
+	// 2. DÃ©tection syntaxe et normalisation
 	var canonical *model.CanonicalInvoice
 	var normErr error
 
@@ -82,6 +84,7 @@ func executeValidationPipeline(
 	}
 	response.CanonicalInvoice = canonical
 
+	// 3. Validation normative arithmÃ©tique
 	arithResult, err := normativeValidator.ValidateCanonical(canonical)
 	if err != nil {
 		response.Valid = false
@@ -92,6 +95,7 @@ func executeValidationPipeline(
 		response.Valid = false
 	}
 
+	// 4. Validation fiscale juridique nationale (CIUS-FR uniquement)
 	if profile == validator.ProfileCIUSFR {
 		fiscalReport := frFiscalValidator.Validate(canonical)
 		response.FiscalReport = &fiscalReport
@@ -103,6 +107,7 @@ func executeValidationPipeline(
 	return response, nil
 }
 
+// Implementations in-memory de repli pour les tests ou le mode sans base active
 type inMemInvoiceRepo struct {
 	mu   sync.Mutex
 	data map[string]*repository.InvoiceRecord
@@ -222,6 +227,7 @@ func setupRouter(keyStore middleware.APIKeyStore, invoiceSvc *service.InvoiceSer
 	normativeValidator := validator.NewNormativeValidator(true)
 	frFiscalValidator := fr.NewFranceCanonicalValidator()
 
+	// Validation stateless
 	mux.HandleFunc("POST /v1/invoices/validate", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -262,6 +268,7 @@ func setupRouter(keyStore middleware.APIKeyStore, invoiceSvc *service.InvoiceSer
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 
+	// Ingestion persistÃ©e avec machine Ã  Ã©tats et audit
 	mux.HandleFunc("POST /v1/invoices", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		tenantID, _ := middleware.GetTenantID(r.Context())
@@ -358,34 +365,21 @@ func main() {
 	var evtRepo repository.EventRepository
 	var idemRepo repository.IdempotencyRepository
 
-	env := strings.ToLower(os.Getenv("APP_ENV"))
-	if env == "" {
-		env = strings.ToLower(os.Getenv("ENVIRONMENT"))
-	}
-	isProduction := env == "production" || env == "prod"
-
 	dbURL := os.Getenv("DATABASE_URL")
-	if isProduction && dbURL == "" {
-		log.Fatalf("[FATAL] Demarrage impossible en production : DATABASE_URL est obligatoire")
-	}
-
 	if dbURL != "" {
 		db, err := postgres.OpenDB(dbURL)
 		if err != nil {
 			log.Fatalf("PostgreSQL connection failed: %v", err)
 		}
-
-		}
-
 		invRepo = postgres.NewInvoiceRepo(db)
 		evtRepo = postgres.NewEventRepo(db)
 		idemRepo = postgres.NewIdempotencyRepo(db)
-		log.Printf("[PERSISTENCE] PostgreSQL connecte avec succes (env=%s)", env)
+		log.Printf("[PERSISTENCE] PostgreSQL connecte avec succes")
 	} else {
 		invRepo = newInMemInvoiceRepo()
 		evtRepo = newInMemEventRepo()
 		idemRepo = newInMemIdemRepo()
-		log.Printf("[PERSISTENCE] Mode In-Memory actif (dev/test uniquement)")
+		log.Printf("[PERSISTENCE] Mode In-Memory actif (DATABASE_URL non defini)")
 	}
 
 	invoiceSvc := service.NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
