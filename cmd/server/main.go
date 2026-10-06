@@ -66,7 +66,7 @@ func executeValidationPipeline(
 		response.Valid = false
 	}
 
-	// 2. Détection syntaxe et normalisation
+	// 2. DÃ©tection syntaxe et normalisation
 	var canonical *model.CanonicalInvoice
 	var normErr error
 
@@ -84,7 +84,7 @@ func executeValidationPipeline(
 	}
 	response.CanonicalInvoice = canonical
 
-	// 3. Validation normative arithmétique
+	// 3. Validation normative arithmÃ©tique
 	arithResult, err := normativeValidator.ValidateCanonical(canonical)
 	if err != nil {
 		response.Valid = false
@@ -268,7 +268,7 @@ func setupRouter(keyStore middleware.APIKeyStore, invoiceSvc *service.InvoiceSer
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 
-	// Ingestion persistée avec machine à états et audit
+	// Ingestion persistÃ©e avec machine Ã  Ã©tats et audit
 	mux.HandleFunc("POST /v1/invoices", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		tenantID, _ := middleware.GetTenantID(r.Context())

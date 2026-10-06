@@ -1,4 +1,4 @@
-﻿-- Migration 000001: Socle transactionnel persistant (PostgreSQL natif)
+-- Migration 000001: Socle transactionnel persistant (PostgreSQL natif)
 
 CREATE TABLE IF NOT EXISTS tenants (
     id VARCHAR(64) PRIMARY KEY,
