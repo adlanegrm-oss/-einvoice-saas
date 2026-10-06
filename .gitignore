@@ -40,3 +40,6 @@ data/
 coverage
 .vercel
 .env*
+
+# Go local temp test binary directory
+.gotmp/
