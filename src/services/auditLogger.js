@@ -1,4 +1,4 @@
-﻿const auditStore = [
+const auditStore = [
   {
     id: "AUD-9021",
     timestamp: "2026-10-04 18:15:20",
@@ -38,3 +38,5 @@ export function logAuditEvent(event) {
   };
   auditStore.unshift(entry);
 }
+
+export const auditLogger = {};

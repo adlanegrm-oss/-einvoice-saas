@@ -1,4 +1,4 @@
-﻿package compliance_test
+package compliance_test
 
 import (
 "os"

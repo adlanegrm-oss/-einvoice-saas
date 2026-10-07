@@ -1,4 +1,4 @@
-﻿package en16931
+package en16931
 
 import (
 "testing"

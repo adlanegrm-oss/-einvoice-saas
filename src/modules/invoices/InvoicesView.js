@@ -93,3 +93,6 @@ export class InvoicesView {
     });
   }
 }
+
+export function renderInvoicesView() { return document.createElement('div'); }
+export const INVOICES_DATA = [];

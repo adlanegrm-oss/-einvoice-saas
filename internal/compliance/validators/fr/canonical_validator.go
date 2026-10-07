@@ -1,4 +1,4 @@
-﻿package fr
+package fr
 
 import (
 "regexp"

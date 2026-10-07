@@ -1,4 +1,4 @@
-ï»¿import { auditLogger } from '../../services/auditLogger.js';
+import { auditLogger } from '../../services/auditLogger.js';
 
 export class InvoiceCreateModal {
   constructor({ establishments, customers, onSave, onClose }) {
@@ -18,9 +18,9 @@ export class InvoiceCreateModal {
       paymentTerms: 'Virement bancaire 30 jours net',
       pdpRoute: 'CHORUS_PRO',
       lines: [
-        { id: 1, desc: 'Prestation d\'intÃ©gration e-Invoicing UBL', qty: 1, unitPrice: 1200.0, vatRate: 20 }
+        { id: 1, desc: 'Prestation d\'intégration e-Invoicing UBL', qty: 1, unitPrice: 1200.0, vatRate: 20 }
       ],
-      legalMentions: 'DispensÃ© d\'escompte en cas de paiement anticipÃ©. PÃ©nalitÃ©s de retard : 3x taux lÃ©gal + 40â‚¬.'
+      legalMentions: 'Dispensé d\'escompte en cas de paiement anticipé. Pénalités de retard : 3x taux légal + 40€.'
     };
   }
 
@@ -52,8 +52,8 @@ export class InvoiceCreateModal {
       <div class="invoice-modal-card">
         <div class="invoice-modal-header">
           <div>
-            <h3>Nouvelle Facture Ã‰lectronique (EN 16931 / CIUS-FR)</h3>
-            <p class="text-muted">Parcours d'Ã©mission conforme - Ã‰tape ${this.state.step} / 3</p>
+            <h3>Nouvelle Facture Électronique (EN 16931 / CIUS-FR)</h3>
+            <p class="text-muted">Parcours d'émission conforme - Étape ${this.state.step} / 3</p>
           </div>
           <button class="btn-close" id="modal-close-btn">&times;</button>
         </div>
@@ -64,13 +64,13 @@ export class InvoiceCreateModal {
 
         <div class="invoice-modal-footer">
           <div>
-            ${this.state.step > 1 ? '<button class="btn btn-secondary" id="modal-prev-btn">PrÃ©cÃ©dent</button>' : ''}
+            ${this.state.step > 1 ? '<button class="btn btn-secondary" id="modal-prev-btn">Précédent</button>' : ''}
           </div>
           <div style="display:flex; gap:0.5rem;">
             <button class="btn btn-secondary" id="modal-cancel-btn">Annuler</button>
             ${this.state.step < 3 
               ? '<button class="btn btn-primary" id="modal-next-btn">Suivant &rarr;</button>' 
-              : '<button class="btn btn-primary" id="modal-submit-btn">Ã‰mettre en Validation</button>'}
+              : '<button class="btn btn-primary" id="modal-submit-btn">Émettre en Validation</button>'}
           </div>
         </div>
       </div>
@@ -85,31 +85,31 @@ export class InvoiceCreateModal {
       return `
         <div class="form-grid">
           <div class="form-group">
-            <label>1. Ã‰tablissement Ã‰metteur (SIRET / Succursale)</label>
+            <label>1. Établissement Émetteur (SIRET / Succursale)</label>
             <select class="form-control" id="f-establishment">
               ${this.establishments.map(e => `<option value="${e.id}" ${this.state.establishmentId === e.id ? 'selected' : ''}>${e.name} (${e.siret})</option>`).join('')}
             </select>
           </div>
 
           <div class="form-group">
-            <label>2. DÃ©biteur / Client Destinataire</label>
+            <label>2. Débiteur / Client Destinataire</label>
             <select class="form-control" id="f-customer">
               ${this.customers.map(c => `<option value="${c.id}" ${this.state.customerId === c.id ? 'selected' : ''}>${c.name} (SIREN:${c.siren})</option>`).join('')}
             </select>
           </div>
 
           <div class="form-group">
-            <label>3. NumÃ©ro de Facture</label>
+            <label>3. Numéro de Facture</label>
             <input type="text" class="form-control" id="f-number" value="${this.state.invoiceNumber}">
           </div>
 
           <div class="form-group">
-            <label>4. Date d'Ã‰mission</label>
+            <label>4. Date d'Émission</label>
             <input type="date" class="form-control" id="f-issue-date" value="${this.state.issueDate}">
           </div>
 
           <div class="form-group">
-            <label>5. Ã‰chÃ©ance de RÃ¨glement</label>
+            <label>5. Échéance de Règlement</label>
             <input type="date" class="form-control" id="f-due-date" value="${this.state.dueDate}">
           </div>
 
@@ -117,7 +117,7 @@ export class InvoiceCreateModal {
             <label>6. Acheminement Plateforme (PDP / PPF)</label>
             <select class="form-control" id="f-pdp">
               <option value="CHORUS_PRO" ${this.state.pdpRoute === 'CHORUS_PRO' ? 'selected' : ''}>Chorus Pro (Portail Public)</option>
-              <option value="PEPPOL_FR" ${this.state.pdpRoute === 'PEPPOL_FR' ? 'selected' : ''}>RÃ©seau PEPPOL (PDP Partenaire)</option>
+              <option value="PEPPOL_FR" ${this.state.pdpRoute === 'PEPPOL_FR' ? 'selected' : ''}>Réseau PEPPOL (PDP Partenaire)</option>
             </select>
           </div>
         </div>
@@ -132,7 +132,7 @@ export class InvoiceCreateModal {
             <thead>
               <tr style="border-bottom:1px solid #e2e8f0; text-align:left; font-size:0.85rem; color:#64748b;">
                 <th>Description</th>
-                <th style="width:80px;">QtÃ©</th>
+                <th style="width:80px;">Qté</th>
                 <th style="width:110px;">Prix Unit. HT</th>
                 <th style="width:90px;">Taux TVA</th>
                 <th style="width:100px; text-align:right;">Total HT</th>
@@ -153,7 +153,7 @@ export class InvoiceCreateModal {
                       <option value="0" ${l.vatRate === 0 ? 'selected' : ''}>0 %</option>
                     </select>
                   </td>
-                  <td style="text-align:right; font-weight:600;">${((l.qty || 0) * (l.unitPrice || 0)).toFixed(2)} â‚¬</td>
+                  <td style="text-align:right; font-weight:600;">${((l.qty || 0) * (l.unitPrice || 0)).toFixed(2)} €</td>
                   <td><button class="btn-del-line" data-idx="${idx}" style="background:none; border:none; color:#ef4444; cursor:pointer;">&times;</button></td>
                 </tr>
               `).join('')}
@@ -166,17 +166,17 @@ export class InvoiceCreateModal {
           <div style="min-width:240px; font-size:0.9rem;">
             <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
               <span>Total Brut HT :</span>
-              <strong>${totalHT.toFixed(2)} â‚¬</strong>
+              <strong>${totalHT.toFixed(2)} €</strong>
             </div>
             ${Object.entries(vatBuckets).map(([rate, amt]) => `
               <div style="display:flex; justify-content:space-between; color:#64748b; font-size:0.85rem;">
-                <span>TVA Ã  ${rate}% :</span>
-                <span>${amt.toFixed(2)} â‚¬</span>
+                <span>TVA à ${rate}% :</span>
+                <span>${amt.toFixed(2)} €</span>
               </div>
             `).join('')}
             <div style="display:flex; justify-content:space-between; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid #cbd5e1; font-size:1.05rem;">
               <span>Total TTC :</span>
-              <strong style="color:#2563eb;">${totalTTC.toFixed(2)} â‚¬</strong>
+              <strong style="color:#2563eb;">${totalTTC.toFixed(2)} €</strong>
             </div>
           </div>
         </div>
@@ -187,22 +187,22 @@ export class InvoiceCreateModal {
       return `
         <div class="form-grid">
           <div class="form-group" style="grid-column: span 2;">
-            <label>8. Conditions de Paiement & ModalitÃ©s</label>
+            <label>8. Conditions de Paiement & Modalités</label>
             <input type="text" class="form-control" id="f-payment-terms" value="${this.state.paymentTerms}">
           </div>
 
           <div class="form-group" style="grid-column: span 2;">
-            <label>9. Mentions LÃ©gales Obligatoires (CIUS-FR)</label>
+            <label>9. Mentions Légales Obligatoires (CIUS-FR)</label>
             <textarea class="form-control" id="f-legal" rows="3">${this.state.legalMentions}</textarea>
           </div>
         </div>
 
         <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:1rem; border-radius:6px; margin-top:1rem;">
-          <h4 style="margin:0 0 0.5rem 0; color:#1e40af; font-size:0.95rem;">10. ContrÃ´le de ConformitÃ© EN 16931 PrÃ©-Ã‰mission</h4>
+          <h4 style="margin:0 0 0.5rem 0; color:#1e40af; font-size:0.95rem;">10. Contrôle de Conformité EN 16931 Pré-Émission</h4>
           <ul style="margin:0; padding-left:1.2rem; font-size:0.85rem; color:#1e3a8a;">
             <li>Format pivot cible : UBL 2.1 / Factur-X profil EXTENDED</li>
-            <li>Identifiants SIRET vendeur et acheteur validÃ©s par l'annuaire</li>
-            <li>RÃ¨gle BR-CO-15 (Ã‰galitÃ© stricte HT + TVA = TTC) vÃ©rifiÃ©e</li>
+            <li>Identifiants SIRET vendeur et acheteur validés par l'annuaire</li>
+            <li>Règle BR-CO-15 (Égalité stricte HT + TVA = TTC) vérifiée</li>
           </ul>
         </div>
       `;

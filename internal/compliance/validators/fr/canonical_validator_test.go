@@ -1,4 +1,4 @@
-﻿package fr_test
+package fr_test
 
 import (
 "testing"

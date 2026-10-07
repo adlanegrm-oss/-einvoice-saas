@@ -100,7 +100,7 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 	}
 	// Vérification issuer
 	if v.expectedIssuer != "" && claims.Issuer != v.expectedIssuer {
-		return nil, err
+		return nil, errors.New("jwt: invalid issuer")
 	}
 	// Vérification audience
 	if v.expectedAud != "" && claims.Audience != v.expectedAud {
