@@ -31,7 +31,7 @@ func NewUserStore(db *sql.DB) *UserStore {
 func (s *UserStore) CreateUser(ctx context.Context, u *User) error {
 	query := `
 		INSERT INTO users (id, tenant_id, email, password_hash, role, full_name, is_active, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	now := time.Now().UTC()
 	u.CreatedAt = now
@@ -48,7 +48,7 @@ func (s *UserStore) GetByEmail(ctx context.Context, tenantID, email string) (*Us
 	query := `
 		SELECT id, tenant_id, email, password_hash, role, full_name, is_active, created_at, updated_at
 		FROM users
-		WHERE tenant_id = ? AND email = ?
+		WHERE tenant_id = $1 AND email = $2
 	`
 	row := s.db.QueryRowContext(ctx, query, tenantID, email)
 

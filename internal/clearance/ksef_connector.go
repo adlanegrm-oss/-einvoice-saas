@@ -16,7 +16,7 @@ func NewKSeFConnector(baseURL, nip string) *KSeFConnector {
 }
 
 type KSeFReceipt struct {
-	KSeFReferenceNumber string    `json:"ksef_reference_number"`
+	KSeFReferenceNumber  string    `json:"ksef_reference_number"`
 	AcquisitionTimestamp time.Time `json:"acquisition_timestamp"`
 	Status               string    `json:"status"` // ACCEPTED, PENDING, REJECTED
 }

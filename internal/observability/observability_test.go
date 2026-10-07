@@ -1,13 +1,13 @@
 package observability
 
 import (
-"context"
-"testing"
+	"context"
+	"testing"
 )
 
 func TestObservability_Smoke(t *testing.T) {
-ctx := context.Background()
-if ctx == nil {
-t.Fatal("internal observability context is nil")
-}
+	ctx := context.Background()
+	if ctx == nil {
+		t.Fatal("internal observability context is nil")
+	}
 }

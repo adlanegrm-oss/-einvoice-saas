@@ -1,16 +1,16 @@
 package integration
 
 import (
-"bytes"
-"testing"
+	"bytes"
+	"testing"
 
-"einvoice-saas/internal/exporter"
-"einvoice-saas/internal/model"
-"einvoice-saas/internal/validator"
+	"einvoice-saas/internal/exporter"
+	"einvoice-saas/internal/model"
+	"einvoice-saas/internal/validator"
 )
 
 func TestFacturXFullPipeline(t *testing.T) {
-ciiXML := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	ciiXML := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
                           xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
 <rsm:ExchangedDocumentContext>
@@ -83,38 +83,38 @@ ciiXML := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>`)
 
-canonical, err := model.NormalizeCIIToCanonical(ciiXML)
-if err != nil {
-t.Fatalf("échec normalisation : %v", err)
-}
+	canonical, err := model.NormalizeCIIToCanonical(ciiXML)
+	if err != nil {
+		t.Fatalf("échec normalisation : %v", err)
+	}
 
-val := validator.NewNormativeValidator(false)
-result, err := val.ValidateEN16931AndPeppol(ciiXML)
-if err != nil || !result.Valid {
-t.Fatalf("échec validation : %v, errors: %+v", err, result.RuleErrors)
-}
+	val := validator.NewNormativeValidator(false)
+	result, err := val.ValidateEN16931AndPeppol(ciiXML)
+	if err != nil || !result.Valid {
+		t.Fatalf("échec validation : %v, errors: %+v", err, result.RuleErrors)
+	}
 
-meta := exporter.InvoiceMetadata{
-InvoiceNumber: canonical.InvoiceNumber,
-SellerName:    canonical.Seller.Name,
-BuyerName:     canonical.Buyer.Name,
-IssueDate:     canonical.IssueDate,
-Currency:      canonical.Currency,
-TotalHT:       canonical.Totals.TaxExclusiveAmount,
-TotalTTC:      canonical.Totals.TaxInclusiveAmount,
-Profile:       exporter.ProfileEN16931,
-}
+	meta := exporter.InvoiceMetadata{
+		InvoiceNumber: canonical.InvoiceNumber,
+		SellerName:    canonical.Seller.Name,
+		BuyerName:     canonical.Buyer.Name,
+		IssueDate:     canonical.IssueDate,
+		Currency:      canonical.Currency,
+		TotalHT:       canonical.Totals.TaxExclusiveAmount,
+		TotalTTC:      canonical.Totals.TaxInclusiveAmount,
+		Profile:       exporter.ProfileEN16931,
+	}
 
-pdfData, err := exporter.GenerateFacturXPDFA3(meta, ciiXML)
-if err != nil {
-t.Fatalf("échec génération Factur-X : %v", err)
-}
+	pdfData, err := exporter.GenerateFacturXPDFA3(meta, ciiXML)
+	if err != nil {
+		t.Fatalf("échec génération Factur-X : %v", err)
+	}
 
-if err := exporter.VerifyFacturXContainer(pdfData); err != nil {
-t.Fatalf("échec vérification Factur-X : %v", err)
-}
+	if err := exporter.VerifyFacturXContainer(pdfData); err != nil {
+		t.Fatalf("échec vérification Factur-X : %v", err)
+	}
 
-if !bytes.Contains(pdfData, ciiXML) {
-t.Fatal("le XML embarqué ne correspond pas au XML source")
-}
+	if !bytes.Contains(pdfData, ciiXML) {
+		t.Fatal("le XML embarqué ne correspond pas au XML source")
+	}
 }

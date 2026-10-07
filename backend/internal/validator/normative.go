@@ -39,7 +39,6 @@ var (
 	sirenRegex = regexp.MustCompile(`^[0-9]{9}$`)
 	siretRegex = regexp.MustCompile(`^[0-9]{14}$`)
 	vatFRRegex = regexp.MustCompile(`^FR[0-9A-Z]{2}[0-9]{9}$`)
-	peppolIDRe = regexp.MustCompile(`^[0-9]{4}:.+`)
 )
 
 type NormativeValidator struct {

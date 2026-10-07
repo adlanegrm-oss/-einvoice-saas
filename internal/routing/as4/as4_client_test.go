@@ -26,10 +26,10 @@ func TestAS4Client_RetryAndSuccess(t *testing.T) {
 	client.BaseBackoff = 10 * time.Millisecond
 
 	msg := AS4Message{
-		MessageID:   "MSG-AS4-TEST-1",
-		SenderParty: "CEGEDIM",
+		MessageID:     "MSG-AS4-TEST-1",
+		SenderParty:   "CEGEDIM",
 		ReceiverParty: "CHORUS",
-		Payload:     []byte("<Invoice>Test</Invoice>"),
+		Payload:       []byte("<Invoice>Test</Invoice>"),
 	}
 
 	receipt, err := client.SendMessageWithRetry(context.Background(), msg)

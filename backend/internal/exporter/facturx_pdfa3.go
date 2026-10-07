@@ -65,7 +65,7 @@ func GenerateFacturXPDFA3(meta InvoiceMetadata, ciiXML []byte) ([]byte, error) {
 		meta.InvoiceNumber, meta.SellerName, meta.SellerSIREN, meta.SellerVAT, meta.BuyerName,
 		meta.IssueDate.Format("02/01/2006"), meta.Currency, meta.TotalHT, meta.TotalTax, meta.TotalTTC, profile)
 
-	writeObj(3, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /AF [6 0 R] >>", ))
+	writeObj(3, "<< /Type /Page /Parent 2 0 R /MediaBox [ 0 0 595 842 ] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>")
 
 	// 4 0 obj: Contenu page
 	writeObj(4, fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(pageStream), pageStream))
@@ -75,11 +75,11 @@ func GenerateFacturXPDFA3(meta InvoiceMetadata, ciiXML []byte) ([]byte, error) {
 
 	// 6 0 obj: Fichier XML Factur-X embarqué (/Filespec avec /AFRelationship /Alternative)
 	xmlLen := len(ciiXML)
-	writeObj(6, fmt.Sprintf("<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 8 0 R >> /Desc (Facture électronique structurée CII) /AFRelationship /Alternative >>"))
+	writeObj(6, "<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 8 0 R >> /Desc (Facture électronique structurée CII) /AFRelationship /Alternative >>")
 
 	// 7 0 obj: Métadonnées XMP conformes Factur-X et PDF/A-3b
 	xmpContent := buildXMPMetadata(meta, ciiXML, profile)
-	writeObj(7, fmt.Sprintf("<< /Type /Metadata /Subtype /XML /Length %d >>\nstream\n%s\nendstream", len(xmpContent), xmpContent))
+	writeObj(7, xmpContent)
 
 	// 8 0 obj: EmbeddedFile Stream (factur-x.xml)
 	nowStr := time.Now().UTC().Format("D:20060102150405Z")
@@ -161,4 +161,9 @@ func VerifyPDFA3Conformance(pdfData []byte) error {
 	}
 
 	return nil
+}
+
+// VerifyFacturXContainer vérifie la validité globale du container Factur-X
+func VerifyFacturXContainer(pdfData []byte) error {
+	return VerifyPDFA3Conformance(pdfData)
 }

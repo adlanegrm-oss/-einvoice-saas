@@ -1,42 +1,42 @@
 package model
 
 import (
-"testing"
-"time"
+	"testing"
+	"time"
 )
 
 func TestParseCIIDate(t *testing.T) {
-tests := []struct {
-name    string
-input   string
-want    time.Time
-wantErr bool
-}{
-{"YYYYMMDD", "20261005", time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), false},
-{"YYYY-MM-DD", "2026-10-05", time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), false},
-{"Timestamp", "20261005143000", time.Date(2026, 10, 5, 14, 30, 0, 0, time.UTC), false},
-{"ISO8601", "2026-10-05T14:30:00Z", time.Date(2026, 10, 5, 14, 30, 0, 0, time.UTC), false},
-{"Chaine vide", "", time.Time{}, false},
-{"Date invalide", "NOT_A_DATE", time.Time{}, true},
-}
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		{"YYYYMMDD", "20261005", time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), false},
+		{"YYYY-MM-DD", "2026-10-05", time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), false},
+		{"Timestamp", "20261005143000", time.Date(2026, 10, 5, 14, 30, 0, 0, time.UTC), false},
+		{"ISO8601", "2026-10-05T14:30:00Z", time.Date(2026, 10, 5, 14, 30, 0, 0, time.UTC), false},
+		{"Chaine vide", "", time.Time{}, false},
+		{"Date invalide", "NOT_A_DATE", time.Time{}, true},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-got, err := parseCIIDate(tt.input)
-if (err != nil) != tt.wantErr {
-t.Errorf("parseCIIDate(%q) error = %v, wantErr = %v", tt.input, err, tt.wantErr)
-return
-}
-if !tt.wantErr && !got.Equal(tt.want) {
-t.Errorf("parseCIIDate(%q) = %v, want = %v", tt.input, got, tt.want)
-}
-})
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseCIIDate(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseCIIDate(%q) error = %v, wantErr = %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !got.Equal(tt.want) {
+				t.Errorf("parseCIIDate(%q) = %v, want = %v", tt.input, got, tt.want)
+			}
+		})
+	}
 }
 
 func TestNormalizeCIIToCanonical_Validation(t *testing.T) {
-t.Run("Rejette date emission invalide", func(t *testing.T) {
-xmlDoc := []byte(`
+	t.Run("Rejette date emission invalide", func(t *testing.T) {
+		xmlDoc := []byte(`
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
                           xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
 <rsm:ExchangedDocument>
@@ -47,14 +47,14 @@ xmlDoc := []byte(`
 </rsm:ExchangedDocument>
 </rsm:CrossIndustryInvoice>`)
 
-_, err := NormalizeCIIToCanonical(xmlDoc)
-if err == nil {
-t.Fatal("attendu : echec sur date invalide")
-}
-})
+		_, err := NormalizeCIIToCanonical(xmlDoc)
+		if err == nil {
+			t.Fatal("attendu : echec sur date invalide")
+		}
+	})
 
-t.Run("Rejette taux TVA non numerique", func(t *testing.T) {
-xmlDoc := []byte(`
+	t.Run("Rejette taux TVA non numerique", func(t *testing.T) {
+		xmlDoc := []byte(`
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
                           xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
 <rsm:ExchangedDocument>
@@ -78,14 +78,14 @@ xmlDoc := []byte(`
 </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>`)
 
-_, err := NormalizeCIIToCanonical(xmlDoc)
-if err == nil {
-t.Fatal("attendu : echec sur taux TVA invalide")
-}
-})
+		_, err := NormalizeCIIToCanonical(xmlDoc)
+		if err == nil {
+			t.Fatal("attendu : echec sur taux TVA invalide")
+		}
+	})
 
-t.Run("Normalisation complete avec DueDate et TVA Ligne", func(t *testing.T) {
-xmlDoc := []byte(`
+	t.Run("Normalisation complete avec DueDate et TVA Ligne", func(t *testing.T) {
+		xmlDoc := []byte(`
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
                           xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100">
 <rsm:ExchangedDocument>
@@ -161,31 +161,31 @@ xmlDoc := []byte(`
 </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>`)
 
-inv, err := NormalizeCIIToCanonical(xmlDoc)
-if err != nil {
-t.Fatalf("erreur inattendue: %v", err)
-}
+		inv, err := NormalizeCIIToCanonical(xmlDoc)
+		if err != nil {
+			t.Fatalf("erreur inattendue: %v", err)
+		}
 
-if inv.DueDate == nil {
-t.Fatal("DueDate est nil, attendu: 2026-11-15")
-}
-if inv.DueDate.Format("2006-01-02") != "2026-11-15" {
-t.Errorf("DueDate = %s, attendu: 2026-11-15", inv.DueDate.Format("2006-01-02"))
-}
+		if inv.DueDate == nil {
+			t.Fatal("DueDate est nil, attendu: 2026-11-15")
+		}
+		if inv.DueDate.Format("2006-01-02") != "2026-11-15" {
+			t.Errorf("DueDate = %s, attendu: 2026-11-15", inv.DueDate.Format("2006-01-02"))
+		}
 
-if len(inv.Lines) != 1 {
-t.Fatalf("lignes = %d, attendu: 1", len(inv.Lines))
-}
-line := inv.Lines[0]
-if line.VatPercent != 20.00 || line.VatCategory != "S" {
-t.Errorf("TVA Ligne incorrecte: %+v", line)
-}
-if line.LineTotal != 500.00 {
-t.Errorf("Total ligne = %.2f, attendu: 500.00", line.LineTotal)
-}
+		if len(inv.Lines) != 1 {
+			t.Fatalf("lignes = %d, attendu: 1", len(inv.Lines))
+		}
+		line := inv.Lines[0]
+		if line.VatPercent != 20.00 || line.VatCategory != "S" {
+			t.Errorf("TVA Ligne incorrecte: %+v", line)
+		}
+		if line.LineTotal != 500.00 {
+			t.Errorf("Total ligne = %.2f, attendu: 500.00", line.LineTotal)
+		}
 
-if inv.Totals.TaxInclusiveAmount != 600.00 {
-t.Errorf("TTC = %.2f, attendu: 600.00", inv.Totals.TaxInclusiveAmount)
-}
-})
+		if inv.Totals.TaxInclusiveAmount != 600.00 {
+			t.Errorf("TTC = %.2f, attendu: 600.00", inv.Totals.TaxInclusiveAmount)
+		}
+	})
 }

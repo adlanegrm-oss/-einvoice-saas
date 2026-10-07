@@ -217,7 +217,7 @@ func (n *NativeEN16931Executor) Transform(xmlInput []byte, xsltSheet []byte) ([]
 		if errCII := xml.Unmarshal(xmlInput, &ciiDoc); errCII == nil && ciiDoc.XMLName.Local == "CrossIndustryInvoice" {
 			isDocFound = true
 			customID = strings.TrimSpace(ciiDoc.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value)
-			
+
 			sellerParty := ciiDoc.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.SellerTradeParty
 			if sVal := strings.TrimSpace(sellerParty.SpecifiedLegalOrganization.ID.Value); len(sVal) == 14 {
 				sellerSiret = sVal

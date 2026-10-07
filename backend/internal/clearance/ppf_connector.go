@@ -31,9 +31,9 @@ func NewPPFConnector(config PPFConfig) *PPFConnector {
 }
 
 type PPFDepositResult struct {
-	DepositID       string    `json:"deposit_id"`
-	Status          string    `json:"status"` // DEPOSEE, REJETEE, MISE_A_DISPOSITION
-	ChorusProID     string    `json:"chorus_pro_id"`
+	DepositID        string    `json:"deposit_id"`
+	Status           string    `json:"status"` // DEPOSEE, REJETEE, MISE_A_DISPOSITION
+	ChorusProID      string    `json:"chorus_pro_id"`
 	TransmissionDate time.Time `json:"transmission_date"`
 }
 
