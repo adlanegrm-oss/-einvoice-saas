@@ -85,6 +85,7 @@ LIMIT 1;
 
 	return &middleware.TenantRecord{
 		ID:      matchedTID,
+		KeyID:   keyID,
 		Active:  true,
 		KeyHash: hash,
 	}, nil
