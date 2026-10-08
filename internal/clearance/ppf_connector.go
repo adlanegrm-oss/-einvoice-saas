@@ -1,87 +1,59 @@
-package clearance
+﻿package clearance
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
+"context"
+"encoding/json"
+"fmt"
+"time"
 )
 
-type PPFConfig struct {
-	BaseURL      string
-	ClientID     string
-	ClientSecret string
-	AuthURL      string
-}
-
+// PPFConnector simule / prépare l'appel PISTE Chorus Pro.
+// En prod: OAuth2 client_credentials + POST dépôt facture.
 type PPFConnector struct {
-	config     PPFConfig
-	httpClient *http.Client
+BaseURL      string
+ClientID     string
+ClientSecret string
+DryRun       bool
 }
 
-func NewPPFConnector(config PPFConfig) *PPFConnector {
-	return &PPFConnector{
-		config: config,
-		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
-		},
-	}
+func NewPPFConnector(baseURL, clientID, clientSecret string, dryRun bool) *PPFConnector {
+if baseURL == "" {
+baseURL = "https://api.piste.gouv.fr"
+}
+return &PPFConnector{BaseURL: baseURL, ClientID: clientID, ClientSecret: clientSecret, DryRun: dryRun}
 }
 
-type PPFDepositResult struct {
-	DepositID        string    `json:"deposit_id"`
-	Status           string    `json:"status"` // DEPOSEE, REJETEE, MISE_A_DISPOSITION
-	ChorusProID      string    `json:"chorus_pro_id"`
-	TransmissionDate time.Time `json:"transmission_date"`
+func (c *PPFConnector) Name() Channel { return ChannelPPF }
+
+func (c *PPFConnector) Submit(ctx context.Context, req TransmissionRequest) (*TransmissionResult, error) {
+select {
+case <-ctx.Done():
+return nil, ctx.Err()
+default:
+}
+if len(req.XMLPayload) == 0 {
+return nil, fmt.Errorf("ppf: XMLPayload vide")
 }
 
-func (c *PPFConnector) SubmitInvoice(ctx context.Context, invoiceNumber string, xmlPayload []byte) (*PPFDepositResult, error) {
-	if len(xmlPayload) == 0 {
-		return nil, fmt.Errorf("ppf: xml payload cannot be empty")
-	}
+result := &TransmissionResult{
+Channel:     ChannelPPF,
+MessageID:   req.MessageID,
+SubmittedAt: time.Now().UTC(),
+Accepted:    true,
+RemoteStatus: "DEPOSEE",
+}
 
-	// Payload structuré de dépôt Chorus Pro / Portail Public de Facturation
-	body := map[string]interface{}{
-		"invoice_number": invoiceNumber,
-		"format":         "CII",
-		"data_raw":       string(xmlPayload),
-	}
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
+if c.DryRun {
+payload, _ := json.Marshal(map[string]string{
+"status":     "DEPOSEE",
+"message_id": req.MessageID,
+"invoice_id": req.InvoiceID,
+"mode":       "dry-run",
+})
+result.RawResponse = payload
+return result, nil
+}
 
-	endpoint := fmt.Sprintf("%s/v1/invoices/deposit", c.config.BaseURL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(raw))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer MOCK_PISTE_OAUTH2_TOKEN")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("ppf network error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("ppf partner rejected with status %d", resp.StatusCode)
-	}
-
-	var res PPFDepositResult
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		// Mock de fallback pour exécution offline
-		return &PPFDepositResult{
-			DepositID:        fmt.Sprintf("PPF-DEP-%s", invoiceNumber),
-			Status:           "DEPOSEE",
-			ChorusProID:      fmt.Sprintf("CPP-%d", time.Now().Unix()),
-			TransmissionDate: time.Now().UTC(),
-		}, nil
-	}
-
-	return &res, nil
+// Point d'extension: appel HTTP réel PISTE
+return result, fmt.Errorf("ppf: mode live non configuré (renseigner credentials + HTTP client)")
 }

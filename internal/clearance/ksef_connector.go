@@ -1,36 +1,51 @@
-package clearance
+﻿package clearance
 
 import (
-	"context"
-	"fmt"
-	"time"
+"context"
+"encoding/json"
+"fmt"
+"time"
 )
 
+// KSeFConnector stub session d'autorisation + envoi FA(2).
 type KSeFConnector struct {
-	BaseURL string
-	NIP     string
+BaseURL string
+DryRun  bool
 }
 
-func NewKSeFConnector(baseURL, nip string) *KSeFConnector {
-	return &KSeFConnector{BaseURL: baseURL, NIP: nip}
+func NewKSeFConnector(baseURL string, dryRun bool) *KSeFConnector {
+if baseURL == "" {
+baseURL = "https://ksef.mf.gov.pl"
+}
+return &KSeFConnector{BaseURL: baseURL, DryRun: dryRun}
 }
 
-type KSeFReceipt struct {
-	KSeFReferenceNumber  string    `json:"ksef_reference_number"`
-	AcquisitionTimestamp time.Time `json:"acquisition_timestamp"`
-	Status               string    `json:"status"` // ACCEPTED, PENDING, REJECTED
+func (c *KSeFConnector) Name() Channel { return ChannelKSeF }
+
+func (c *KSeFConnector) Submit(ctx context.Context, req TransmissionRequest) (*TransmissionResult, error) {
+select {
+case <-ctx.Done():
+return nil, ctx.Err()
+default:
 }
-
-func (k *KSeFConnector) SendFA2Invoice(ctx context.Context, invoiceXML []byte) (*KSeFReceipt, error) {
-	if len(invoiceXML) == 0 {
-		return nil, fmt.Errorf("ksef: empty FA(2) invoice xml")
-	}
-
-	// Simulation conforme à l'API asynchrone KSeF 2.0 (Pologne)
-	refNum := fmt.Sprintf("%s-20261004-%08d", k.NIP, time.Now().Unix()%100000000)
-	return &KSeFReceipt{
-		KSeFReferenceNumber:  refNum,
-		AcquisitionTimestamp: time.Now().UTC(),
-		Status:               "ACCEPTED",
-	}, nil
+if len(req.XMLPayload) == 0 {
+return nil, fmt.Errorf("ksef: XMLPayload vide")
+}
+result := &TransmissionResult{
+Channel:      ChannelKSeF,
+MessageID:    req.MessageID,
+SubmittedAt:  time.Now().UTC(),
+Accepted:     true,
+RemoteStatus: "ACCEPTED",
+}
+if c.DryRun {
+payload, _ := json.Marshal(map[string]string{
+"status":     "ACCEPTED",
+"message_id": req.MessageID,
+"mode":       "dry-run",
+})
+result.RawResponse = payload
+return result, nil
+}
+return result, fmt.Errorf("ksef: mode live non configuré")
 }

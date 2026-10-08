@@ -1,4 +1,4 @@
-package validator
+﻿package validator
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ func NewSchematronEngine(executor XSLTExecutor) *SchematronEngine {
 	}
 }
 
-// ValidateProfile résout automatiquement l'artefact normatif selon le profil ciblé
+// ValidateProfile rÃ©sout automatiquement l'artefact normatif selon le profil ciblÃ©
 func (e *SchematronEngine) ValidateProfile(xmlData []byte, profile ValidationProfile) (*SchematronReport, error) {
 	var xsltPath string
 	switch profile {
@@ -57,12 +57,12 @@ func (e *SchematronEngine) ValidateProfile(xmlData []byte, profile ValidationPro
 	case ProfileCIUSFR:
 		xsltPath = rules.PathCIUSFRXSLT
 	default:
-		return nil, fmt.Errorf("schematron: profil non supporté: %s", profile)
+		return nil, fmt.Errorf("schematron: profil non supportÃ©: %s", profile)
 	}
 
 	xsltBytes, err := rules.LoadRuleAsset(xsltPath)
 	if err != nil {
-		return nil, fmt.Errorf("schematron: échec chargement règle [%s]: %w", xsltPath, err)
+		return nil, fmt.Errorf("schematron: Ã©chec chargement rÃ¨gle [%s]: %w", xsltPath, err)
 	}
 
 	return e.ValidateSchematron(xmlData, xsltBytes, profile)
@@ -78,14 +78,20 @@ func (e *SchematronEngine) ValidateSchematron(xmlData []byte, xsltData []byte, p
 
 	svrlBytes, err := e.xsltExecutor.Transform(xmlData, xsltData)
 	if err != nil {
-		return nil, fmt.Errorf("schematron: échec transformation XSLT: %w", err)
+		return nil, fmt.Errorf("schematron: Ã©chec transformation XSLT: %w", err)
 	}
 
 	report, err := ParseSVRL(svrlBytes)
 	if err != nil {
-		return nil, fmt.Errorf("schematron: échec analyse du rapport SVRL: %w", err)
+		return nil, fmt.Errorf("schematron: Ã©chec analyse du rapport SVRL: %w", err)
 	}
 
 	report.Profile = profile
 	return report, nil
+}
+
+// NewNativeBackedSchematronEngine expose le moteur Go natif derrière l'API SchematronEngine.
+// Utile pour les environnements sans xsltproc, tout en gardant l'API ValidateProfile.
+func NewNativeBackedSchematronEngine() *SchematronEngine {
+return NewSchematronEngine(&NativeEN16931Executor{})
 }
