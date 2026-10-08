@@ -1,35 +1,35 @@
-﻿package fr_test
+package fr_test
 
 import (
-	"github.com/shopspring/decimal"
-	"testing"
 	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/model"
+	"github.com/shopspring/decimal"
+	"testing"
 )
 
 func validBaseInvoice() *model.CanonicalInvoice {
 	return &model.CanonicalInvoice{
-		ID:     "INV-2026-0001",
-		TypeCode:   "380",
-		IssueDate: "2026-10-06",
+		ID:                "INV-2026-0001",
+		TypeCode:          "380",
+		IssueDate:         "2026-10-06",
 		OperationCategory: "services",
 		Seller: model.Party{
-			Name:       "Fournisseur FR SAS",
-			VATID:      "FR12345678901",
-			LegalID: "12345678900012",
-			CountryCode:    "FR",
+			Name:        "Fournisseur FR SAS",
+			VATID:       "FR12345678901",
+			LegalID:     "12345678900012",
+			CountryCode: "FR",
 		},
 		Buyer: model.Party{
-			Name:       "Client FR SARL",
-			LegalID: "98765432100019",
-			CountryCode:    "FR",
+			Name:        "Client FR SARL",
+			LegalID:     "98765432100019",
+			CountryCode: "FR",
 		},
 		Taxes: []model.TaxSubtotal{
 			{
-				TaxableAmount: decimal.NewFromFloat(1000.0),
-				TaxAmount:     decimal.NewFromFloat(200.0),
-				Percent:       decimal.NewFromFloat(20.0),
-				TaxCategoryCode:  "S",
+				TaxableAmount:   decimal.NewFromFloat(1000.0),
+				TaxAmount:       decimal.NewFromFloat(200.0),
+				Percent:         decimal.NewFromFloat(20.0),
+				TaxCategoryCode: "S",
 			},
 		},
 	}
@@ -85,7 +85,7 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 				TaxableAmount:   decimal.NewFromFloat(500.0),
 				TaxAmount:       decimal.NewFromFloat(0.0),
 				Percent:         decimal.NewFromFloat(0.0),
-				TaxCategoryCode:    "E",
+				TaxCategoryCode: "E",
 				ExemptionReason: "", // Manquant
 			},
 		}
@@ -113,7 +113,7 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 				TaxableAmount:   decimal.NewFromFloat(500.0),
 				TaxAmount:       decimal.NewFromFloat(0.0),
 				Percent:         decimal.NewFromFloat(0.0),
-				TaxCategoryCode:    "E",
+				TaxCategoryCode: "E",
 				ExemptionReason: "Article 262 ter I du CGI",
 			},
 		}

@@ -1,4 +1,4 @@
-﻿package app
+package app
 
 import (
 	"context"
@@ -14,11 +14,11 @@ func TestInMemInvoiceRepo(t *testing.T) {
 	repo := NewInMemInvoiceRepo()
 
 	inv := &repository.InvoiceRecord{
-		TenantID:           "tenant-1",
-		ID: "inv-001",
+		TenantID:           "tenant-1",
+		ID:                 "inv-001",
 		SellerIdentifier:   "12345678900012",
 		BuyerIdentifier:    "98765432100034",
-		IssueDate: time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC),
+		IssueDate:          time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC),
 		Currency:           "EUR",
 		TotalTaxInclusive:  decimal.NewFromFloat(1200),
 		Syntax:             "UBL",

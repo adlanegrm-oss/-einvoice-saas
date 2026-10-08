@@ -1,4 +1,4 @@
-﻿package compliance
+package compliance
 
 import (
 	"fmt"
@@ -86,14 +86,14 @@ func (d *Dispatcher) Validate(inv *model.CanonicalInvoice) (model.ValidationRepo
 	return report, nil
 }
 func detectJurisdiction(inv *model.CanonicalInvoice) string {
-if inv.Seller.CountryCode != "" {
-return inv.Seller.CountryCode
-}
-if inv.DocumentCurrency == "MAD" {
-return "MA"
-}
-if inv.DocumentCurrency == "EUR" {
-return "FR"
-}
-return "FR"
+	if inv.Seller.CountryCode != "" {
+		return inv.Seller.CountryCode
+	}
+	if inv.DocumentCurrency == "MAD" {
+		return "MA"
+	}
+	if inv.DocumentCurrency == "EUR" {
+		return "FR"
+	}
+	return "FR"
 }

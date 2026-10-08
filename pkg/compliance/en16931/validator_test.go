@@ -1,24 +1,24 @@
-﻿package en16931
+package en16931
 
 import (
+	"einvoice-saas/internal/model"
 	"github.com/shopspring/decimal"
 	"testing"
-	"einvoice-saas/internal/model"
 )
 
 func TestValidator_ValidCanonicalInvoice(t *testing.T) {
 	v := NewValidator()
 
 	inv := &model.CanonicalInvoice{
-		ID:            "INV-2026-001",
-		IssueDate: "2026-10-08",
-		DocumentCurrency:      "EUR",
+		ID:               "INV-2026-001",
+		IssueDate:        "2026-10-08",
+		DocumentCurrency: "EUR",
 		Seller: model.Party{
-			Name:    "Fournisseur SAS",
+			Name:        "Fournisseur SAS",
 			CountryCode: "FR",
 		},
 		Buyer: model.Party{
-			Name:    "Client SA",
+			Name:        "Client SA",
 			CountryCode: "FR",
 		},
 		Lines: []model.Line{
@@ -29,10 +29,10 @@ func TestValidator_ValidCanonicalInvoice(t *testing.T) {
 			{TaxableAmount: decimal.NewFromFloat(150.00), TaxAmount: decimal.NewFromFloat(30.00), Percent: decimal.NewFromFloat(20.0)},
 		},
 		Totals: model.Totals{
-			LineTotalAmount: decimal.NewFromFloat(150.00),
-			TaxExclusiveAmount:  decimal.NewFromFloat(150.00),
-			TaxInclusiveAmount:  decimal.NewFromFloat(180.00),
-			PayableAmount:       decimal.NewFromFloat(180.00),
+			LineTotalAmount:    decimal.NewFromFloat(150.00),
+			TaxExclusiveAmount: decimal.NewFromFloat(150.00),
+			TaxInclusiveAmount: decimal.NewFromFloat(180.00),
+			PayableAmount:      decimal.NewFromFloat(180.00),
 		},
 	}
 
@@ -59,11 +59,11 @@ func TestValidator_MathDiscrepancy(t *testing.T) {
 	v := NewValidator()
 
 	inv := &model.CanonicalInvoice{
-		ID:            "INV-ERR",
-		IssueDate: "2026-10-08",
-		DocumentCurrency:      "EUR",
-		Seller:        model.Party{Name: "Seller", CountryCode: "FR"},
-		Buyer:         model.Party{Name: "Buyer", CountryCode: "FR"},
+		ID:               "INV-ERR",
+		IssueDate:        "2026-10-08",
+		DocumentCurrency: "EUR",
+		Seller:           model.Party{Name: "Seller", CountryCode: "FR"},
+		Buyer:            model.Party{Name: "Buyer", CountryCode: "FR"},
 		Lines: []model.Line{
 			{ID: "1", LineTotalAmount: decimal.NewFromFloat(100.00)},
 		},
@@ -71,10 +71,10 @@ func TestValidator_MathDiscrepancy(t *testing.T) {
 			{TaxableAmount: decimal.NewFromFloat(100.00), TaxAmount: decimal.NewFromFloat(20.00), Percent: decimal.NewFromFloat(20.0)},
 		},
 		Totals: model.Totals{
-			LineTotalAmount: decimal.NewFromFloat(90.00),
-			TaxExclusiveAmount:  decimal.NewFromFloat(100.00),
-			TaxInclusiveAmount:  decimal.NewFromFloat(110.00),
-			PayableAmount:       decimal.NewFromFloat(110.00),
+			LineTotalAmount:    decimal.NewFromFloat(90.00),
+			TaxExclusiveAmount: decimal.NewFromFloat(100.00),
+			TaxInclusiveAmount: decimal.NewFromFloat(110.00),
+			PayableAmount:      decimal.NewFromFloat(110.00),
 		},
 	}
 

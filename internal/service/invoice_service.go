@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -115,8 +115,8 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 		buyerID = canonical.Buyer.LegalID
 		currency = canonical.DocumentCurrency
 		if parsed, err := time.Parse("2006-01-02", canonical.IssueDate); err == nil {
-issueDate = parsed
-}
+			issueDate = parsed
+		}
 		totalTaxInc = canonical.Totals.TaxInclusiveAmount
 	}
 	if issueDate.IsZero() {

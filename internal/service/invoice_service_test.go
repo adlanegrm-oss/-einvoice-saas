@@ -1,13 +1,13 @@
-﻿package service
+package service
 
 import (
 	"context"
-	"errors"
-	"sync"
-	"testing"
 	"einvoice-saas/internal/model"
 	"einvoice-saas/internal/repository"
 	"einvoice-saas/internal/validator"
+	"errors"
+	"sync"
+	"testing"
 )
 
 type memoryInvoiceRepo struct {
@@ -146,7 +146,7 @@ func TestInvoiceService_Ingest_Success_And_Idempotency(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-2026-001",
+			ID:        "INV-2026-001",
 			IssueDate: "2026-10-08",
 		}, true, map[string]string{"mock": "valid"}, nil
 	}
@@ -197,7 +197,7 @@ func TestInvoiceService_Ingest_IdempotencyConflict(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-2026-002",
+			ID:        "INV-2026-002",
 			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
@@ -233,7 +233,7 @@ func TestInvoiceService_Ingest_DuplicateDocument(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-2026-003",
+			ID:        "INV-2026-003",
 			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
@@ -275,7 +275,7 @@ func TestInvoiceService_Ingest_Rejection_And_Audit(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-FAIL-001",
+			ID:        "INV-FAIL-001",
 			IssueDate: "2026-10-08",
 		}, false, map[string]string{"rule": "BR-01 failed"}, nil
 	}
@@ -327,7 +327,7 @@ func TestInvoiceService_Ingest_UpdateStatus_Failure(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-FAIL-STATUS",
+			ID:        "INV-FAIL-STATUS",
 			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
@@ -356,7 +356,7 @@ func TestInvoiceService_Ingest_IdempotencySave_Failure(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			ID: "INV-IDEM-FAIL",
+			ID:        "INV-IDEM-FAIL",
 			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}

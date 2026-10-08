@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"context"
@@ -28,8 +28,8 @@ func TestInvoiceRecord_ZeroValue(t *testing.T) {
 func TestInvoiceRecord_Fields(t *testing.T) {
 	now := time.Now().UTC()
 	inv := InvoiceRecord{
-		TenantID:           "tenant-1",
-		ID:      "FACT-2026-001",
+		TenantID:           "tenant-1",
+		ID:                 "FACT-2026-001",
 		SellerIdentifier:   "12345678900012",
 		BuyerIdentifier:    "98765432100034",
 		IssueDate:          now,

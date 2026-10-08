@@ -1,4 +1,4 @@
-﻿package validator
+package validator
 
 import (
 	"fmt"
@@ -93,5 +93,5 @@ func (e *SchematronEngine) ValidateSchematron(xmlData []byte, xsltData []byte, p
 // NewNativeBackedSchematronEngine expose le moteur Go natif derrière l'API SchematronEngine.
 // Utile pour les environnements sans xsltproc, tout en gardant l'API ValidateProfile.
 func NewNativeBackedSchematronEngine() *SchematronEngine {
-return NewSchematronEngine(&NativeEN16931Executor{})
+	return NewSchematronEngine(&NativeEN16931Executor{})
 }

@@ -1,4 +1,4 @@
-﻿package app
+package app
 
 import (
 	"bytes"
@@ -22,13 +22,13 @@ import (
 )
 
 type UnifiedValidationResponse struct {
-	Valid            bool                        `json:"valid"`
-	Syntax           string                      `json:"syntax"`
-	TargetProfile    string                      `json:"target_profile"`
-	SchematronReport *validator.SchematronReport `json:"schematron_report,omitempty"`
+	Valid            bool                                 `json:"valid"`
+	Syntax           string                               `json:"syntax"`
+	TargetProfile    string                               `json:"target_profile"`
+	SchematronReport *validator.SchematronReport          `json:"schematron_report,omitempty"`
 	ArithmeticReport *validator.NormativeValidationResult `json:"arithmetic_report,omitempty"`
-	FiscalReport     *model.ValidationReport     `json:"fiscal_report,omitempty"`
-	CanonicalInvoice *model.CanonicalInvoice     `json:"canonical_invoice,omitempty"`
+	FiscalReport     *model.ValidationReport              `json:"fiscal_report,omitempty"`
+	CanonicalInvoice *model.CanonicalInvoice              `json:"canonical_invoice,omitempty"`
 }
 
 func ExecuteValidationPipeline(
