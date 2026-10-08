@@ -11,7 +11,6 @@ import (
 
 func TestGolden_EN16931_Schematron_Execution(t *testing.T) {
 	t.Skip("golden CIUS-FR fixtures à réaligner (BR-FR-03)")
-	return
 
 	engine := validator.NewSchematronEngine(validator.NewDefaultXSLTExecutor())
 
