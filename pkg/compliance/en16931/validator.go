@@ -2,7 +2,8 @@ package en16931
 
 import (
 	"fmt"
-	"math"
+
+	"github.com/shopspring/decimal"
 
 	"einvoice-saas/internal/model"
 )
@@ -20,7 +21,6 @@ func NewValidator() *Validator {
 	return &Validator{}
 }
 
-// Validate applique les contrôles sémantiques et d'équilibres financiers EN 16931
 func (v *Validator) Validate(inv *model.CanonicalInvoice) []RuleViolation {
 	var violations []RuleViolation
 	violations = append(violations, v.validateHeader(inv)...)
@@ -32,22 +32,18 @@ func (v *Validator) Validate(inv *model.CanonicalInvoice) []RuleViolation {
 func (v *Validator) validateHeader(inv *model.CanonicalInvoice) []RuleViolation {
 	var violations []RuleViolation
 
-	// BR-01: An Invoice shall have an Invoice number (BT-1)
-	invoiceNum := inv.InvoiceNumber
-	if invoiceNum == "" {
-		invoiceNum = inv.ID
-	}
-	if invoiceNum == "" {
+	// BR-01: Invoice number (BT-1) → ID
+	if inv.ID == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-01",
 			Message:  "An Invoice shall have an Invoice number (BT-1).",
-			Path:     "Invoice.InvoiceNumber",
+			Path:     "Invoice.ID",
 			Severity: model.SeverityError,
 		})
 	}
 
-	// BR-02: An Invoice shall have an Invoice issue date (BT-2)
-	if inv.IssueDate.IsZero() {
+	// BR-02: Issue date (BT-2) — string, pas time.Time
+	if inv.IssueDate == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-02",
 			Message:  "An Invoice shall have an Invoice issue date (BT-2).",
@@ -56,12 +52,12 @@ func (v *Validator) validateHeader(inv *model.CanonicalInvoice) []RuleViolation 
 		})
 	}
 
-	// BR-05: An Invoice shall have an Invoice currency code (BT-5)
-	if inv.Currency == "" {
+	// BR-05: Currency (BT-5) → DocumentCurrency
+	if inv.DocumentCurrency == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-05",
 			Message:  "An Invoice shall have an Invoice currency code (BT-5).",
-			Path:     "Invoice.Currency",
+			Path:     "Invoice.DocumentCurrency",
 			Severity: model.SeverityError,
 		})
 	}
@@ -72,7 +68,6 @@ func (v *Validator) validateHeader(inv *model.CanonicalInvoice) []RuleViolation 
 func (v *Validator) validateParties(inv *model.CanonicalInvoice) []RuleViolation {
 	var violations []RuleViolation
 
-	// BR-06: Seller name (BT-27)
 	if inv.Seller.Name == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-06",
@@ -82,7 +77,6 @@ func (v *Validator) validateParties(inv *model.CanonicalInvoice) []RuleViolation
 		})
 	}
 
-	// BR-07: Buyer name (BT-44)
 	if inv.Buyer.Name == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-07",
@@ -92,22 +86,21 @@ func (v *Validator) validateParties(inv *model.CanonicalInvoice) []RuleViolation
 		})
 	}
 
-	// BR-08: Seller postal address country code (BT-40)
-	if inv.Seller.Country == "" {
+	// Country → CountryCode
+	if inv.Seller.CountryCode == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-08",
 			Message:  "An Invoice shall contain the Seller postal address country code (BT-40).",
-			Path:     "Invoice.Seller.Country",
+			Path:     "Invoice.Seller.CountryCode",
 			Severity: model.SeverityError,
 		})
 	}
 
-	// BR-09: Buyer postal address country code (BT-55)
-	if inv.Buyer.Country == "" {
+	if inv.Buyer.CountryCode == "" {
 		violations = append(violations, RuleViolation{
 			RuleID:   "BR-09",
 			Message:  "An Invoice shall contain the Buyer postal address country code (BT-55).",
-			Path:     "Invoice.Buyer.Country",
+			Path:     "Invoice.Buyer.CountryCode",
 			Severity: model.SeverityError,
 		})
 	}
@@ -117,39 +110,42 @@ func (v *Validator) validateParties(inv *model.CanonicalInvoice) []RuleViolation
 
 func (v *Validator) validateMath(inv *model.CanonicalInvoice) []RuleViolation {
 	var violations []RuleViolation
+	tol := decimal.NewFromFloat(0.01)
 
-	// BR-CO-10: Sum of Invoice line net amount = LineExtensionAmount (BT-106)
-	var expectedLineSum float64
+	// BR-CO-10 : somme des lignes = LineTotalAmount
+	expectedLineSum := decimal.Zero
 	for _, line := range inv.Lines {
-		expectedLineSum += line.LineTotal
+		expectedLineSum = expectedLineSum.Add(line.LineTotalAmount)
 	}
 
-	if math.Abs(expectedLineSum-inv.Totals.LineExtensionAmount) > 0.01 {
+	if expectedLineSum.Sub(inv.Totals.LineTotalAmount).Abs().GreaterThan(tol) {
 		violations = append(violations, RuleViolation{
 			RuleID: "BR-CO-10",
 			Message: fmt.Sprintf(
-				"Sum of Invoice line net amount (%.2f) must equal LineExtensionAmount (%.2f).",
-				expectedLineSum, inv.Totals.LineExtensionAmount,
+				"Sum of Invoice line net amount (%s) must equal LineTotalAmount (%s).",
+				expectedLineSum.StringFixed(2), inv.Totals.LineTotalAmount.StringFixed(2),
 			),
-			Path:     "Invoice.Totals.LineExtensionAmount",
+			Path:     "Invoice.Totals.LineTotalAmount",
 			Severity: model.SeverityError,
 		})
 	}
 
-	// Somme totale des taxes déclarées dans TaxSubtotals
-	var sumTaxAmount float64
-	for _, subtotal := range inv.TaxSubtotals {
-		sumTaxAmount += subtotal.TaxAmount
+	// Somme des taxes (Taxes, pas TaxSubtotals)
+	sumTaxAmount := decimal.Zero
+	for _, subtotal := range inv.Taxes {
+		sumTaxAmount = sumTaxAmount.Add(subtotal.TaxAmount)
 	}
 
-	// BR-CO-15: TaxInclusiveAmount (BT-112) = TaxExclusiveAmount (BT-109) + Total VAT
-	expectedGross := inv.Totals.TaxExclusiveAmount + sumTaxAmount
-	if math.Abs(expectedGross-inv.Totals.TaxInclusiveAmount) > 0.01 {
+	// BR-CO-15 : HT + TVA = TTC
+	expectedGross := inv.Totals.TaxExclusiveAmount.Add(sumTaxAmount)
+	if expectedGross.Sub(inv.Totals.TaxInclusiveAmount).Abs().GreaterThan(tol) {
 		violations = append(violations, RuleViolation{
 			RuleID: "BR-CO-15",
 			Message: fmt.Sprintf(
-				"Invoice total amount with VAT (%.2f) must equal amount without VAT (%.2f) + VAT total amount (%.2f).",
-				inv.Totals.TaxInclusiveAmount, inv.Totals.TaxExclusiveAmount, sumTaxAmount,
+				"Invoice total amount with VAT (%s) must equal amount without VAT (%s) + VAT total amount (%s).",
+				inv.Totals.TaxInclusiveAmount.StringFixed(2),
+				inv.Totals.TaxExclusiveAmount.StringFixed(2),
+				sumTaxAmount.StringFixed(2),
 			),
 			Path:     "Invoice.Totals.TaxInclusiveAmount",
 			Severity: model.SeverityError,

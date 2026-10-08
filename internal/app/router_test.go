@@ -1,4 +1,4 @@
-package app
+﻿package app
 
 import (
 	"context"
@@ -14,12 +14,11 @@ func TestInMemInvoiceRepo(t *testing.T) {
 	repo := NewInMemInvoiceRepo()
 
 	inv := &repository.InvoiceRecord{
-		TenantID:           "tenant-1",
-		ID:                 "inv-001",
-		InvoiceNumber:      "FACT-001",
+		TenantID:           "tenant-1",
+		ID: "inv-001",
 		SellerIdentifier:   "12345678900012",
 		BuyerIdentifier:    "98765432100034",
-		IssueDate:          time.Now().UTC(),
+		IssueDate: time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC),
 		Currency:           "EUR",
 		TotalTaxInclusive:  decimal.NewFromFloat(1200),
 		Syntax:             "UBL",
@@ -36,7 +35,7 @@ func TestInMemInvoiceRepo(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	// Create duplicate → ErrDuplicateBusiness
+	// Create duplicate â†’ ErrDuplicateBusiness
 	if err := repo.Create(ctx, inv); err != repository.ErrDuplicateBusiness {
 		t.Errorf("expected ErrDuplicateBusiness, got %v", err)
 	}
@@ -46,8 +45,8 @@ func TestInMemInvoiceRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
-	if got.InvoiceNumber != "FACT-001" {
-		t.Errorf("InvoiceNumber = %s; want FACT-001", got.InvoiceNumber)
+	if got.ID != "inv-001" {
+		t.Errorf("ID = %s; want inv-001", got.ID)
 	}
 
 	// GetByID not found

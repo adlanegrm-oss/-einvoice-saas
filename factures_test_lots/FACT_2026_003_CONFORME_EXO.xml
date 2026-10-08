@@ -1,62 +1,109 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-    <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
-    <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:facx.org:1p0:cius-fr</cbc:CustomizationID>
-    <cbc:ID>FR-2026-0003</cbc:ID>
-    <cbc:IssueDate>2026-10-05</cbc:IssueDate>
+<?xml version="1.0" encoding="UTF-8"?>
+<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+             xmlns:cac="urn:oasis:names:specification:ubl:Schema:xsd:CommonAggregateComponents-2"
+             xmlns:cbc="urn:oasis:names:specification:ubl:Schema:xsd:CommonBasicComponents-2">
+    <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1.0:en16931</cbc:CustomizationID>
+    <cbc:ID>FACT_2026_003</cbc:ID>
+    <cbc:IssueDate>2026-06-01</cbc:IssueDate>
     <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
     <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-    
     <cac:AccountingSupplierParty>
         <cac:Party>
+            <cbc:EndpointID schemeID="0002">12345678900012</cbc:EndpointID>
             <cac:PartyIdentification>
-                <cbc:ID schemeID="0009">75012345600039</cbc:ID>
+                <cbc:ID>12345678900012</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyName>
-                <cbc:Name>DATA CONSULTING FRANCE SASU</cbc:Name>
+                <cbc:Name>Fournisseur Test SAS</cbc:Name>
             </cac:PartyName>
+            <cac:PostalAddress>
+                <cbc:StreetName>10 Rue de la Paix</cbc:StreetName>
+                <cbc:CityName>Paris</cbc:CityName>
+                <cbc:PostalZone>75001</cbc:PostalZone>
+                <cac:Country>
+                    <cbc:IdentificationCode>FR</cbc:IdentificationCode>
+                </cac:Country>
+            </cac:PostalAddress>
             <cac:PartyTaxScheme>
-                <cbc:CompanyID>FR65750123456</cbc:CompanyID>
-                <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+                <cbc:CompanyID>FR12123456789</cbc:CompanyID>
+                <cac:TaxScheme>
+                    <cbc:ID>VA</cbc:ID>
+                </cac:TaxScheme>
             </cac:PartyTaxScheme>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Fournisseur Test SAS</cbc:RegistrationName>
+                <cbc:CompanyID schemeID="0002">12345678900012</cbc:CompanyID>
+            </cac:PartyLegalEntity>
         </cac:Party>
     </cac:AccountingSupplierParty>
-
     <cac:AccountingCustomerParty>
         <cac:Party>
+            <!-- Correction : Acheteur Belge avec TVA intracommunautaire BE et identifiant cohérent non SIRET -->
+            <cbc:EndpointID schemeID="9925">BE0987654321</cbc:EndpointID>
             <cac:PartyIdentification>
-                <cbc:ID schemeID="0009">98765432100019</cbc:ID>
+                <cbc:ID>BE0987654321</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyName>
-                <cbc:Name>FINANCE HUB EUROPE NV</cbc:Name>
+                <cbc:Name>Client Belge BVBA</cbc:Name>
             </cac:PartyName>
+            <cac:PostalAddress>
+                <cbc:StreetName>Avenue Louise 50</cbc:StreetName>
+                <cbc:CityName>Bruxelles</cbc:CityName>
+                <cbc:PostalZone>1050</cbc:PostalZone>
+                <cac:Country>
+                    <cbc:IdentificationCode>BE</cbc:IdentificationCode>
+                </cac:Country>
+            </cac:PostalAddress>
             <cac:PartyTaxScheme>
-                <cbc:CompanyID>BE0123456789</cbc:CompanyID>
-                <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+                <cbc:CompanyID>BE0987654321</cbc:CompanyID>
+                <cac:TaxScheme>
+                    <cbc:ID>VA</cbc:ID>
+                </cac:TaxScheme>
             </cac:PartyTaxScheme>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Client Belge BVBA</cbc:RegistrationName>
+                <cbc:CompanyID schemeID="0208">0987654321</cbc:CompanyID>
+            </cac:PartyLegalEntity>
         </cac:Party>
     </cac:AccountingCustomerParty>
-
     <cac:TaxTotal>
         <cbc:TaxAmount currencyID="EUR">0.00</cbc:TaxAmount>
         <cac:TaxSubtotal>
-            <cbc:TaxableAmount currencyID="EUR">8200.00</cbc:TaxableAmount>
+            <cbc:TaxableAmount currencyID="EUR">1000.00</cbc:TaxableAmount>
             <cbc:TaxAmount currencyID="EUR">0.00</cbc:TaxAmount>
             <cac:TaxCategory>
                 <cbc:ID>E</cbc:ID>
-                <cbc:Percent>0.0</cbc:Percent>
-                <cbc:TaxExemptionReason>Franchise en base de TVA - Art. 293 B du CGI</cbc:TaxExemptionReason>
-                <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+                <cbc:Percent>0.00</cbc:Percent>
+                <cbc:TaxExemptionReason>Exonération de TVA art. 262 ter I du CGI (Livraison intracommunautaire)</cbc:TaxExemptionReason>
+                <cac:TaxScheme>
+                    <cbc:ID>VA</cbc:ID>
+                </cac:TaxScheme>
             </cac:TaxCategory>
         </cac:TaxSubtotal>
     </cac:TaxTotal>
-
     <cac:LegalMonetaryTotal>
-        <cbc:LineExtensionAmount currencyID="EUR">8200.00</cbc:LineExtensionAmount>
-        <cbc:TaxExclusiveAmount currencyID="EUR">8200.00</cbc:TaxExclusiveAmount>
-        <cbc:TaxInclusiveAmount currencyID="EUR">8200.00</cbc:TaxInclusiveAmount>
-        <cbc:PayableAmount currencyID="EUR">8200.00</cbc:PayableAmount>
+        <cbc:LineExtensionAmount currencyID="EUR">1000.00</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="EUR">1000.00</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="EUR">1000.00</cbc:TaxInclusiveAmount>
+        <cbc:PayableAmount currencyID="EUR">1000.00</cbc:PayableAmount>
     </cac:LegalMonetaryTotal>
-</Invoice>
+    <cac:InvoiceLine>
+        <cbc:ID>1</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="C62">1.00</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">1000.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Name>Prestation de service conseil</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>E</cbc:ID>
+                <cbc:Percent>0.00</cbc:Percent>
+                <cbc:TaxExemptionReason>Exonération de TVA art. 262 ter I du CGI (Livraison intracommunautaire)</cbc:TaxExemptionReason>
+                <cac:TaxScheme>
+                    <cbc:ID>VA</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">1000.00</cbc:PriceAmount>
+        </cac:Price>
+    </cac:InvoiceLine>
+</ubl:Invoice>

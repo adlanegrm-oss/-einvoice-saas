@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 func TestRepository_Smoke(t *testing.T) {
 	ctx := context.Background()
 	if ctx == nil {
-		t.Fatal("context.Background() ne doit pas être nil")
+		t.Fatal("context.Background() ne doit pas Ãªtre nil")
 	}
 }
 
@@ -21,16 +21,15 @@ func TestInvoiceRecord_ZeroValue(t *testing.T) {
 		t.Errorf("Status zero value = %q; attendu vide", inv.Status)
 	}
 	if !inv.TotalTaxInclusive.IsZero() {
-		t.Error("TotalTaxInclusive zero value devrait être 0")
+		t.Error("TotalTaxInclusive zero value devrait Ãªtre 0")
 	}
 }
 
 func TestInvoiceRecord_Fields(t *testing.T) {
 	now := time.Now().UTC()
 	inv := InvoiceRecord{
-		TenantID:           "tenant-1",
-		ID:                 "inv-001",
-		InvoiceNumber:      "FACT-2026-001",
+		TenantID:           "tenant-1",
+		ID:      "FACT-2026-001",
 		SellerIdentifier:   "12345678900012",
 		BuyerIdentifier:    "98765432100034",
 		IssueDate:          now,
@@ -58,15 +57,15 @@ func TestInvoiceRecord_Fields(t *testing.T) {
 
 func TestEventErrors(t *testing.T) {
 	if ErrBrokenHashChain == nil {
-		t.Error("ErrBrokenHashChain ne doit pas être nil")
+		t.Error("ErrBrokenHashChain ne doit pas Ãªtre nil")
 	}
 	if ErrInvalidEventHash == nil {
-		t.Error("ErrInvalidEventHash ne doit pas être nil")
+		t.Error("ErrInvalidEventHash ne doit pas Ãªtre nil")
 	}
 }
 
 func TestIdempotencyErrors(t *testing.T) {
 	if ErrIdempotencyKeyExists == nil {
-		t.Error("ErrIdempotencyKeyExists ne doit pas être nil")
+		t.Error("ErrIdempotencyKeyExists ne doit pas Ãªtre nil")
 	}
 }

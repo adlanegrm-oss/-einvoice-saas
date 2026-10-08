@@ -1,4 +1,4 @@
-package service
+﻿package service
 
 import (
 	"context"
@@ -74,7 +74,7 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 	h := sha256.Sum256(cmd.RawXML)
 	docSHA256 := hex.EncodeToString(h[:])
 
-	// 2. Traitement d'idempotence technique et détection de conflit de payload
+	// 2. Traitement d'idempotence technique et dÃ©tection de conflit de payload
 	if cmd.IdempotencyKey != "" {
 		existing, err := s.idempotencyRepo.Get(ctx, cmd.TenantID, cmd.IdempotencyKey)
 		if err == nil && existing != nil {
@@ -89,13 +89,13 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 		}
 	}
 
-	// 3. Détection de doublon documentaire par SHA-256
+	// 3. DÃ©tection de doublon documentaire par SHA-256
 	existingDoc, err := s.invoiceRepo.GetBySHA256(ctx, cmd.TenantID, docSHA256)
 	if err == nil && existingDoc != nil {
 		return nil, ErrDuplicateDocument
 	}
 
-	// 4. Exécution du moteur de validation (Schematron -> Pivot -> Normatif -> Fiscal)
+	// 4. ExÃ©cution du moteur de validation (Schematron -> Pivot -> Normatif -> Fiscal)
 	syntax, canonical, valid, valReport, valErr := s.validateFn(cmd.RawXML, cmd.Profile)
 	if valErr != nil {
 		return nil, fmt.Errorf("pipeline_failure: %w", valErr)
@@ -107,21 +107,23 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 	var totalTaxInc = decimal.Zero
 
 	if canonical != nil {
-		if canonical.InvoiceNumber != "" {
-			invoiceID = canonical.InvoiceNumber
+		if canonical.ID != "" {
+			invoiceID = canonical.ID
 		}
-		invNum = canonical.InvoiceNumber
-		sellerID = canonical.Seller.NationalID
-		buyerID = canonical.Buyer.NationalID
-		currency = canonical.Currency
-		issueDate = canonical.IssueDate
-		totalTaxInc = decimal.NewFromFloat(canonical.Totals.TaxInclusiveAmount)
+		invNum = canonical.ID
+		sellerID = canonical.Seller.LegalID
+		buyerID = canonical.Buyer.LegalID
+		currency = canonical.DocumentCurrency
+		if parsed, err := time.Parse("2006-01-02", canonical.IssueDate); err == nil {
+issueDate = parsed
+}
+		totalTaxInc = canonical.Totals.TaxInclusiveAmount
 	}
 	if issueDate.IsZero() {
 		issueDate = time.Now().UTC()
 	}
 
-	// 5. Persistance initiale en état RECEIVED
+	// 5. Persistance initiale en Ã©tat RECEIVED
 	invRecord := &repository.InvoiceRecord{
 		TenantID:          cmd.TenantID,
 		ID:                invoiceID,
@@ -141,7 +143,7 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 		return nil, fmt.Errorf("failed_to_persist_invoice: %w", err)
 	}
 
-	// 6. Transition vers VALIDATING (contrôle strict de la machine à états)
+	// 6. Transition vers VALIDATING (contrÃ´le strict de la machine Ã  Ã©tats)
 	if err := s.invoiceRepo.UpdateStatus(ctx, cmd.TenantID, invoiceID, repository.StatusValidating); err != nil {
 		return nil, fmt.Errorf("failed_to_set_validating_status: %w", err)
 	}
@@ -159,7 +161,7 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 		return nil, fmt.Errorf("failed_to_update_status: %w", err)
 	}
 
-	// 7. Scellement de la chaîne d'audit
+	// 7. Scellement de la chaÃ®ne d'audit
 	nowUTC := time.Now().UTC()
 	auditPayload := evidence.AuditEvent{
 		TenantID:       cmd.TenantID,
@@ -200,7 +202,7 @@ func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand
 		ValidationReport: valReport,
 	}
 
-	// 8. Enregistrement transactionnel du résultat d'idempotence (erreur non masquée)
+	// 8. Enregistrement transactionnel du rÃ©sultat d'idempotence (erreur non masquÃ©e)
 	if cmd.IdempotencyKey != "" {
 		respBytes, err := json.Marshal(result)
 		if err != nil {

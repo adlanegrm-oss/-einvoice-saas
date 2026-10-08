@@ -1,12 +1,10 @@
-package service
+﻿package service
 
 import (
 	"context"
 	"errors"
 	"sync"
 	"testing"
-	"time"
-
 	"einvoice-saas/internal/model"
 	"einvoice-saas/internal/repository"
 	"einvoice-saas/internal/validator"
@@ -148,8 +146,8 @@ func TestInvoiceService_Ingest_Success_And_Idempotency(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-2026-001",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-2026-001",
+			IssueDate: "2026-10-08",
 		}, true, map[string]string{"mock": "valid"}, nil
 	}
 
@@ -166,10 +164,10 @@ func TestInvoiceService_Ingest_Success_And_Idempotency(t *testing.T) {
 	// Premier appel
 	res1, err := svc.IngestInvoice(context.Background(), cmd)
 	if err != nil {
-		t.Fatalf("Premier appel échoué: %v", err)
+		t.Fatalf("Premier appel Ã©chouÃ©: %v", err)
 	}
 	if res1.IsIdempotentReplay {
-		t.Errorf("Le premier appel ne doit pas être un rejeu")
+		t.Errorf("Le premier appel ne doit pas Ãªtre un rejeu")
 	}
 	if res1.Status != "accepted" {
 		t.Errorf("Statut attendu 'accepted', obtenu: %s", res1.Status)
@@ -178,20 +176,20 @@ func TestInvoiceService_Ingest_Success_And_Idempotency(t *testing.T) {
 		t.Errorf("AuditHash manquant")
 	}
 
-	// Rejeu avec la même clé et le même XML
+	// Rejeu avec la mÃªme clÃ© et le mÃªme XML
 	res2, err := svc.IngestInvoice(context.Background(), cmd)
 	if err != nil {
-		t.Fatalf("Rejeu idempotent échoué: %v", err)
+		t.Fatalf("Rejeu idempotent Ã©chouÃ©: %v", err)
 	}
 	if !res2.IsIdempotentReplay {
-		t.Errorf("Le second appel aurait dû être détecté comme rejeu idempotent")
+		t.Errorf("Le second appel aurait dÃ» Ãªtre dÃ©tectÃ© comme rejeu idempotent")
 	}
 	if res2.InvoiceID != res1.InvoiceID || res2.AuditHash != res1.AuditHash {
-		t.Errorf("La réponse rejouée ne correspond pas à l'originale")
+		t.Errorf("La rÃ©ponse rejouÃ©e ne correspond pas Ã  l'originale")
 	}
 }
 
-// 2. Conflit d'idempotence : même clé, XML différent
+// 2. Conflit d'idempotence : mÃªme clÃ©, XML diffÃ©rent
 func TestInvoiceService_Ingest_IdempotencyConflict(t *testing.T) {
 	invRepo := newMemoryInvoiceRepo()
 	evtRepo := newMemoryEventRepo()
@@ -199,8 +197,8 @@ func TestInvoiceService_Ingest_IdempotencyConflict(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-2026-002",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-2026-002",
+			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
 
@@ -216,7 +214,7 @@ func TestInvoiceService_Ingest_IdempotencyConflict(t *testing.T) {
 
 	_, err := svc.IngestInvoice(context.Background(), cmd)
 	if err != nil {
-		t.Fatalf("Premier appel échoué: %v", err)
+		t.Fatalf("Premier appel Ã©chouÃ©: %v", err)
 	}
 
 	cmdConflict := cmd
@@ -227,7 +225,7 @@ func TestInvoiceService_Ingest_IdempotencyConflict(t *testing.T) {
 	}
 }
 
-// 3. Déduplication par empreinte documentaire SHA-256
+// 3. DÃ©duplication par empreinte documentaire SHA-256
 func TestInvoiceService_Ingest_DuplicateDocument(t *testing.T) {
 	invRepo := newMemoryInvoiceRepo()
 	evtRepo := newMemoryEventRepo()
@@ -235,8 +233,8 @@ func TestInvoiceService_Ingest_DuplicateDocument(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-2026-003",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-2026-003",
+			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
 
@@ -252,10 +250,10 @@ func TestInvoiceService_Ingest_DuplicateDocument(t *testing.T) {
 		Actor:          "api_gateway",
 	}
 	if _, err := svc.IngestInvoice(context.Background(), cmd1); err != nil {
-		t.Fatalf("Ingestion initiale échouée: %v", err)
+		t.Fatalf("Ingestion initiale Ã©chouÃ©e: %v", err)
 	}
 
-	// Même XML, mais clé d'idempotence différente (tentative de soumission d'un doublon)
+	// MÃªme XML, mais clÃ© d'idempotence diffÃ©rente (tentative de soumission d'un doublon)
 	cmd2 := IngestionCommand{
 		TenantID:       "tenant_test_1",
 		IdempotencyKey: "key_second_call",
@@ -269,7 +267,7 @@ func TestInvoiceService_Ingest_DuplicateDocument(t *testing.T) {
 	}
 }
 
-// 4. Facture non conforme : transition REJECTED + Audit scellé
+// 4. Facture non conforme : transition REJECTED + Audit scellÃ©
 func TestInvoiceService_Ingest_Rejection_And_Audit(t *testing.T) {
 	invRepo := newMemoryInvoiceRepo()
 	evtRepo := newMemoryEventRepo()
@@ -277,8 +275,8 @@ func TestInvoiceService_Ingest_Rejection_And_Audit(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-FAIL-001",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-FAIL-001",
+			IssueDate: "2026-10-08",
 		}, false, map[string]string{"rule": "BR-01 failed"}, nil
 	}
 
@@ -294,14 +292,14 @@ func TestInvoiceService_Ingest_Rejection_And_Audit(t *testing.T) {
 
 	res, err := svc.IngestInvoice(context.Background(), cmd)
 	if err != nil {
-		t.Fatalf("L'ingestion d'une facture non conforme ne doit pas renvoyer d'erreur système: %v", err)
+		t.Fatalf("L'ingestion d'une facture non conforme ne doit pas renvoyer d'erreur systÃ¨me: %v", err)
 	}
 
 	if res.Status != "rejected" {
 		t.Errorf("Statut attendu 'rejected', obtenu: %s", res.Status)
 	}
 
-	// Vérifier la persistance du statut final dans le repository
+	// VÃ©rifier la persistance du statut final dans le repository
 	inv, err := invRepo.GetByID(context.Background(), "tenant_test_1", "INV-FAIL-001")
 	if err != nil {
 		t.Fatalf("Facture introuvable en base: %v", err)
@@ -310,17 +308,17 @@ func TestInvoiceService_Ingest_Rejection_And_Audit(t *testing.T) {
 		t.Errorf("Statut en base attendu REJECTED, obtenu: %s", inv.Status)
 	}
 
-	// Vérifier qu'un événement d'audit REJECTED a été consigné
+	// VÃ©rifier qu'un Ã©vÃ©nement d'audit REJECTED a Ã©tÃ© consignÃ©
 	events, err := evtRepo.GetHistory(context.Background(), "tenant_test_1", "INV-FAIL-001")
 	if err != nil || len(events) != 1 {
-		t.Fatalf("Attendu 1 événement d'audit, obtenu: %d", len(events))
+		t.Fatalf("Attendu 1 Ã©vÃ©nement d'audit, obtenu: %d", len(events))
 	}
 	if events[0].EventType != string(repository.StatusRejected) {
-		t.Errorf("Type d'événement d'audit attendu REJECTED, obtenu: %s", events[0].EventType)
+		t.Errorf("Type d'Ã©vÃ©nement d'audit attendu REJECTED, obtenu: %s", events[0].EventType)
 	}
 }
 
-// 5. Échec lors de UpdateStatus -> propagation d'erreur
+// 5. Ã‰chec lors de UpdateStatus -> propagation d'erreur
 func TestInvoiceService_Ingest_UpdateStatus_Failure(t *testing.T) {
 	invRepo := newMemoryInvoiceRepo()
 	invRepo.failUpdateStatus = true
@@ -329,8 +327,8 @@ func TestInvoiceService_Ingest_UpdateStatus_Failure(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-FAIL-STATUS",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-FAIL-STATUS",
+			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
 
@@ -345,11 +343,11 @@ func TestInvoiceService_Ingest_UpdateStatus_Failure(t *testing.T) {
 
 	_, err := svc.IngestInvoice(context.Background(), cmd)
 	if err == nil {
-		t.Fatalf("Attendu une erreur lors de l'échec d'UpdateStatus, obtenu nil")
+		t.Fatalf("Attendu une erreur lors de l'Ã©chec d'UpdateStatus, obtenu nil")
 	}
 }
 
-// 6. Échec lors du Save de l'idempotence -> propagation d'erreur
+// 6. Ã‰chec lors du Save de l'idempotence -> propagation d'erreur
 func TestInvoiceService_Ingest_IdempotencySave_Failure(t *testing.T) {
 	invRepo := newMemoryInvoiceRepo()
 	evtRepo := newMemoryEventRepo()
@@ -358,8 +356,8 @@ func TestInvoiceService_Ingest_IdempotencySave_Failure(t *testing.T) {
 
 	dummyValFn := func(xmlData []byte, profile validator.ValidationProfile) (string, *model.CanonicalInvoice, bool, interface{}, error) {
 		return "UBL-2.1", &model.CanonicalInvoice{
-			InvoiceNumber: "INV-IDEM-FAIL",
-			IssueDate:     time.Now().UTC(),
+			ID: "INV-IDEM-FAIL",
+			IssueDate: "2026-10-08",
 		}, true, nil, nil
 	}
 
@@ -375,6 +373,6 @@ func TestInvoiceService_Ingest_IdempotencySave_Failure(t *testing.T) {
 
 	_, err := svc.IngestInvoice(context.Background(), cmd)
 	if err == nil {
-		t.Fatalf("Attendu une erreur lors de l'échec de persistance de l'idempotence, obtenu nil")
+		t.Fatalf("Attendu une erreur lors de l'Ã©chec de persistance de l'idempotence, obtenu nil")
 	}
 }

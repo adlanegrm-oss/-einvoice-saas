@@ -1,4 +1,4 @@
-package integration
+﻿package integration
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ func TestFacturXFullPipeline(t *testing.T) {
 <ram:LineID>1</ram:LineID>
 </ram:AssociatedDocumentLineDocument>
 <ram:SpecifiedTradeProduct>
-<ram:Name>Développement Système</ram:Name>
+<ram:Name>DÃ©veloppement SystÃ¨me</ram:Name>
 </ram:SpecifiedTradeProduct>
 <ram:SpecifiedLineTradeAgreement>
 <ram:NetPriceProductTradePrice>
@@ -43,7 +43,7 @@ func TestFacturXFullPipeline(t *testing.T) {
 </ram:SpecifiedLineTradeDelivery>
 <ram:SpecifiedLineTradeSettlement>
 <ram:ApplicableTradeTax>
-<ram:CategoryCode>S</ram:CategoryCode>
+<ram:TaxCategoryCode>S</ram:TaxCategoryCode>
 <ram:RateApplicablePercent>20.00</ram:RateApplicablePercent>
 </ram:ApplicableTradeTax>
 <ram:SpecifiedTradeSettlementLineMonetarySummation>
@@ -70,7 +70,7 @@ func TestFacturXFullPipeline(t *testing.T) {
 <ram:BasisAmount>1000.00</ram:BasisAmount>
 <ram:RateApplicablePercent>20.00</ram:RateApplicablePercent>
 <ram:CalculatedAmount>200.00</ram:CalculatedAmount>
-<ram:CategoryCode>S</ram:CategoryCode>
+<ram:TaxCategoryCode>S</ram:TaxCategoryCode>
 </ram:ApplicableTradeTax>
 <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 <ram:LineTotalAmount>1000.00</ram:LineTotalAmount>
@@ -85,21 +85,21 @@ func TestFacturXFullPipeline(t *testing.T) {
 
 	canonical, err := model.NormalizeCIIToCanonical(ciiXML)
 	if err != nil {
-		t.Fatalf("échec normalisation : %v", err)
+		t.Fatalf("Ã©chec normalisation : %v", err)
 	}
 
 	val := validator.NewNormativeValidator(false)
 	result, err := val.ValidateEN16931AndPeppol(ciiXML)
 	if err != nil || !result.Valid {
-		t.Fatalf("échec validation : %v, errors: %+v", err, result.RuleErrors)
+		t.Fatalf("Ã©chec validation : %v, errors: %+v", err, result.RuleErrors)
 	}
 
 	meta := exporter.InvoiceMetadata{
-		InvoiceNumber: canonical.InvoiceNumber,
+		ID: canonical.ID,
 		SellerName:    canonical.Seller.Name,
 		BuyerName:     canonical.Buyer.Name,
 		IssueDate:     canonical.IssueDate,
-		Currency:      canonical.Currency,
+		DocumentCurrency:      canonical.DocumentCurrency,
 		TotalHT:       canonical.Totals.TaxExclusiveAmount,
 		TotalTTC:      canonical.Totals.TaxInclusiveAmount,
 		Profile:       exporter.ProfileEN16931,
@@ -107,14 +107,14 @@ func TestFacturXFullPipeline(t *testing.T) {
 
 	pdfData, err := exporter.GenerateFacturXPDFA3(meta, ciiXML)
 	if err != nil {
-		t.Fatalf("échec génération Factur-X : %v", err)
+		t.Fatalf("Ã©chec gÃ©nÃ©ration Factur-X : %v", err)
 	}
 
 	if err := exporter.VerifyFacturXContainer(pdfData); err != nil {
-		t.Fatalf("échec vérification Factur-X : %v", err)
+		t.Fatalf("Ã©chec vÃ©rification Factur-X : %v", err)
 	}
 
 	if !bytes.Contains(pdfData, ciiXML) {
-		t.Fatal("le XML embarqué ne correspond pas au XML source")
+		t.Fatal("le XML embarquÃ© ne correspond pas au XML source")
 	}
 }

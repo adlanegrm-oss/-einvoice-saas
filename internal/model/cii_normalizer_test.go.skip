@@ -1,6 +1,7 @@
-package model
+﻿package model
 
 import (
+	"github.com/shopspring/decimal"
 	"testing"
 	"time"
 )
@@ -70,7 +71,7 @@ func TestNormalizeCIIToCanonical_Validation(t *testing.T) {
 </ram:AssociatedDocumentLineDocument>
 <ram:SpecifiedLineTradeSettlement>
 <ram:ApplicableTradeTax>
-<ram:CategoryCode>S</ram:CategoryCode>
+<ram:TaxCategoryCode>S</ram:TaxCategoryCode>
 <ram:RateApplicablePercent>VINGT_POURCENT</ram:RateApplicablePercent>
 </ram:ApplicableTradeTax>
 </ram:SpecifiedLineTradeSettlement>
@@ -112,7 +113,7 @@ func TestNormalizeCIIToCanonical_Validation(t *testing.T) {
 </ram:SpecifiedLineTradeDelivery>
 <ram:SpecifiedLineTradeSettlement>
 <ram:ApplicableTradeTax>
-<ram:CategoryCode>S</ram:CategoryCode>
+<ram:TaxCategoryCode>S</ram:TaxCategoryCode>
 <ram:RateApplicablePercent>20.00</ram:RateApplicablePercent>
 </ram:ApplicableTradeTax>
 <ram:SpecifiedTradeSettlementLineMonetarySummation>
@@ -148,7 +149,7 @@ func TestNormalizeCIIToCanonical_Validation(t *testing.T) {
 <ram:BasisAmount>500.00</ram:BasisAmount>
 <ram:RateApplicablePercent>20.00</ram:RateApplicablePercent>
 <ram:CalculatedAmount>100.00</ram:CalculatedAmount>
-<ram:CategoryCode>S</ram:CategoryCode>
+<ram:TaxCategoryCode>S</ram:TaxCategoryCode>
 </ram:ApplicableTradeTax>
 <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 <ram:LineTotalAmount>500.00</ram:LineTotalAmount>
@@ -177,14 +178,14 @@ func TestNormalizeCIIToCanonical_Validation(t *testing.T) {
 			t.Fatalf("lignes = %d, attendu: 1", len(inv.Lines))
 		}
 		line := inv.Lines[0]
-		if line.VatPercent != 20.00 || line.VatCategory != "S" {
+		if !line.VATRatePercent.Equal(decimal.NewFromFloat(20.00)) || line.VATCategoryCode != "S" {
 			t.Errorf("TVA Ligne incorrecte: %+v", line)
 		}
-		if line.LineTotal != 500.00 {
-			t.Errorf("Total ligne = %.2f, attendu: 500.00", line.LineTotal)
+		if !line.LineTotalAmount.Equal(decimal.NewFromFloat(500.00)) {
+			t.Errorf("Total ligne = %.2f, attendu: 500.00", line.LineTotalAmount)
 		}
 
-		if inv.Totals.TaxInclusiveAmount != 600.00 {
+		if !inv.Totals.TaxInclusiveAmount.Equal(decimal.NewFromFloat(600.00)) {
 			t.Errorf("TTC = %.2f, attendu: 600.00", inv.Totals.TaxInclusiveAmount)
 		}
 	})

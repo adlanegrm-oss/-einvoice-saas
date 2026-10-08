@@ -1,4 +1,4 @@
-package validator
+﻿package validator
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 
 func TestValidateEN16931CoreRules_ValidInvoice(t *testing.T) {
 	totals := InvoiceMonetaryTotals{
-		LineExtensionAmount: decimal.NewFromFloat(100.00),
+		LineTotalAmount: decimal.NewFromFloat(100.00),
 		TaxExclusiveAmount:  decimal.NewFromFloat(100.00),
 		TaxTotalAmount:      decimal.NewFromFloat(20.00),
 		TaxInclusiveAmount:  decimal.NewFromFloat(120.00),
@@ -31,7 +31,7 @@ func TestValidateEN16931CoreRules_ValidInvoice(t *testing.T) {
 func TestValidateEN16931CoreRules_BR_CO_10_Failure(t *testing.T) {
 	// BT-115 (115.00) != BT-112 (120.00) - BT-113 (0.00) + BT-114 (0.00)
 	totals := InvoiceMonetaryTotals{
-		LineExtensionAmount: decimal.NewFromFloat(100.00),
+		LineTotalAmount: decimal.NewFromFloat(100.00),
 		TaxExclusiveAmount:  decimal.NewFromFloat(100.00),
 		TaxTotalAmount:      decimal.NewFromFloat(20.00),
 		TaxInclusiveAmount:  decimal.NewFromFloat(120.00),
@@ -61,7 +61,7 @@ func TestValidateEN16931CoreRules_BR_CO_10_Failure(t *testing.T) {
 
 func TestValidateEN16931CoreRules_BR_CO_16_NegativePayable(t *testing.T) {
 	totals := InvoiceMonetaryTotals{
-		LineExtensionAmount: decimal.NewFromFloat(-10.00),
+		LineTotalAmount: decimal.NewFromFloat(-10.00),
 		TaxExclusiveAmount:  decimal.NewFromFloat(-10.00),
 		TaxTotalAmount:      decimal.NewFromFloat(-2.00),
 		TaxInclusiveAmount:  decimal.NewFromFloat(-12.00),

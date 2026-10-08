@@ -1,19 +1,18 @@
-package exporter
+﻿package exporter
 
 import (
 	"testing"
-	"time"
 )
 
 func TestGenerateFacturXPDFA3_Conformity(t *testing.T) {
 	meta := InvoiceMetadata{
-		InvoiceNumber: "FX-2026-999",
+		ID: "FX-2026-999",
 		SellerName:    "Cegedim Services",
 		SellerSIREN:   "732049036",
 		SellerVAT:     "FR12732049036",
 		BuyerName:     "Odigo France",
-		IssueDate:     time.Now().UTC(),
-		Currency:      "EUR",
+		IssueDate: "2026-10-08",
+		DocumentCurrency:      "EUR",
 		TotalHT:       1500.00,
 		TotalTax:      300.00,
 		TotalTTC:      1800.00,

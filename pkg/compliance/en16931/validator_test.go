@@ -1,9 +1,8 @@
-package en16931
+﻿package en16931
 
 import (
+	"github.com/shopspring/decimal"
 	"testing"
-	"time"
-
 	"einvoice-saas/internal/model"
 )
 
@@ -11,30 +10,29 @@ func TestValidator_ValidCanonicalInvoice(t *testing.T) {
 	v := NewValidator()
 
 	inv := &model.CanonicalInvoice{
-		ID:            "INV-2026-001",
-		InvoiceNumber: "INV-2026-001",
-		IssueDate:     time.Now(),
-		Currency:      "EUR",
+		ID:            "INV-2026-001",
+		IssueDate: "2026-10-08",
+		DocumentCurrency:      "EUR",
 		Seller: model.Party{
 			Name:    "Fournisseur SAS",
-			Country: "FR",
+			CountryCode: "FR",
 		},
 		Buyer: model.Party{
 			Name:    "Client SA",
-			Country: "FR",
+			CountryCode: "FR",
 		},
-		Lines: []model.InvoiceLine{
-			{ID: "1", LineTotal: 100.00, Quantity: 1, UnitPrice: 100.00},
-			{ID: "2", LineTotal: 50.00, Quantity: 1, UnitPrice: 50.00},
+		Lines: []model.Line{
+			{ID: "1", LineTotalAmount: decimal.NewFromFloat(100.00), Quantity: decimal.NewFromFloat(1), NetPrice: decimal.NewFromFloat(100.00)},
+			{ID: "2", LineTotalAmount: decimal.NewFromFloat(50.00), Quantity: decimal.NewFromFloat(1), NetPrice: decimal.NewFromFloat(50.00)},
 		},
-		TaxSubtotals: []model.TaxSubtotal{
-			{TaxableAmount: 150.00, TaxAmount: 30.00, Percent: 20.0},
+		Taxes: []model.TaxSubtotal{
+			{TaxableAmount: decimal.NewFromFloat(150.00), TaxAmount: decimal.NewFromFloat(30.00), Percent: decimal.NewFromFloat(20.0)},
 		},
-		Totals: model.MonetaryTotals{
-			LineExtensionAmount: 150.00,
-			TaxExclusiveAmount:  150.00,
-			TaxInclusiveAmount:  180.00,
-			PayableAmount:       180.00,
+		Totals: model.Totals{
+			LineTotalAmount: decimal.NewFromFloat(150.00),
+			TaxExclusiveAmount:  decimal.NewFromFloat(150.00),
+			TaxInclusiveAmount:  decimal.NewFromFloat(180.00),
+			PayableAmount:       decimal.NewFromFloat(180.00),
 		},
 	}
 
@@ -48,7 +46,7 @@ func TestValidator_MissingMandatoryPartiesAndHeaders(t *testing.T) {
 	v := NewValidator()
 
 	inv := &model.CanonicalInvoice{
-		Currency: "EUR",
+		DocumentCurrency: "EUR",
 	}
 
 	violations := v.Validate(inv)
@@ -61,23 +59,22 @@ func TestValidator_MathDiscrepancy(t *testing.T) {
 	v := NewValidator()
 
 	inv := &model.CanonicalInvoice{
-		ID:            "INV-ERR",
-		InvoiceNumber: "INV-ERR",
-		IssueDate:     time.Now(),
-		Currency:      "EUR",
-		Seller:        model.Party{Name: "Seller", Country: "FR"},
-		Buyer:         model.Party{Name: "Buyer", Country: "FR"},
-		Lines: []model.InvoiceLine{
-			{ID: "1", LineTotal: 100.00},
+		ID:            "INV-ERR",
+		IssueDate: "2026-10-08",
+		DocumentCurrency:      "EUR",
+		Seller:        model.Party{Name: "Seller", CountryCode: "FR"},
+		Buyer:         model.Party{Name: "Buyer", CountryCode: "FR"},
+		Lines: []model.Line{
+			{ID: "1", LineTotalAmount: decimal.NewFromFloat(100.00)},
 		},
-		TaxSubtotals: []model.TaxSubtotal{
-			{TaxableAmount: 100.00, TaxAmount: 20.00, Percent: 20.0},
+		Taxes: []model.TaxSubtotal{
+			{TaxableAmount: decimal.NewFromFloat(100.00), TaxAmount: decimal.NewFromFloat(20.00), Percent: decimal.NewFromFloat(20.0)},
 		},
-		Totals: model.MonetaryTotals{
-			LineExtensionAmount: 90.00,
-			TaxExclusiveAmount:  100.00,
-			TaxInclusiveAmount:  110.00,
-			PayableAmount:       110.00,
+		Totals: model.Totals{
+			LineTotalAmount: decimal.NewFromFloat(90.00),
+			TaxExclusiveAmount:  decimal.NewFromFloat(100.00),
+			TaxInclusiveAmount:  decimal.NewFromFloat(110.00),
+			PayableAmount:       decimal.NewFromFloat(110.00),
 		},
 	}
 

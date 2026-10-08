@@ -1,36 +1,35 @@
-package fr_test
+﻿package fr_test
 
 import (
+	"github.com/shopspring/decimal"
 	"testing"
-	"time"
-
 	"einvoice-saas/internal/compliance/validators/fr"
 	"einvoice-saas/internal/model"
 )
 
 func validBaseInvoice() *model.CanonicalInvoice {
 	return &model.CanonicalInvoice{
-		InvoiceNumber:     "INV-2026-0001",
-		InvoiceTypeCode:   "380",
-		IssueDate:         time.Date(2026, 10, 6, 0, 0, 0, 0, time.UTC),
+		ID:     "INV-2026-0001",
+		TypeCode:   "380",
+		IssueDate: "2026-10-06",
 		OperationCategory: "services",
 		Seller: model.Party{
 			Name:       "Fournisseur FR SAS",
-			TaxID:      "FR12345678901",
-			NationalID: "12345678900012",
-			Country:    "FR",
+			VATID:      "FR12345678901",
+			LegalID: "12345678900012",
+			CountryCode:    "FR",
 		},
 		Buyer: model.Party{
 			Name:       "Client FR SARL",
-			NationalID: "98765432100019",
-			Country:    "FR",
+			LegalID: "98765432100019",
+			CountryCode:    "FR",
 		},
-		TaxSubtotals: []model.TaxSubtotal{
+		Taxes: []model.TaxSubtotal{
 			{
-				TaxableAmount: 1000.0,
-				TaxAmount:     200.0,
-				Percent:       20.0,
-				CategoryCode:  "S",
+				TaxableAmount: decimal.NewFromFloat(1000.0),
+				TaxAmount:     decimal.NewFromFloat(200.0),
+				Percent:       decimal.NewFromFloat(20.0),
+				TaxCategoryCode:  "S",
 			},
 		},
 	}
@@ -49,8 +48,8 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 
 	t.Run("Rejet_Avoir_Sans_Reference", func(t *testing.T) {
 		inv := validBaseInvoice()
-		inv.InvoiceTypeCode = "381"
-		inv.PrecedingInvoiceReference = ""
+		inv.TypeCode = "381"
+		inv.PrecedingInvoices = []model.PrecedingInvoiceRef{{ID: ""}}
 
 		rep := v.Validate(inv)
 		if rep.Valid {
@@ -64,14 +63,14 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatalf("attendu règle FR-RULE-CREDIT-NOTE-REF-01, obtenu: %+v", rep.Issues)
+			t.Fatalf("attendu rÃ¨gle FR-RULE-CREDIT-NOTE-REF-01, obtenu: %+v", rep.Issues)
 		}
 	})
 
 	t.Run("Avoir_Conforme_Avec_Reference", func(t *testing.T) {
 		inv := validBaseInvoice()
-		inv.InvoiceTypeCode = "381"
-		inv.PrecedingInvoiceReference = "INV-2026-0001"
+		inv.TypeCode = "381"
+		inv.PrecedingInvoices = []model.PrecedingInvoiceRef{{ID: "INV-2026-0001"}}
 
 		rep := v.Validate(inv)
 		if !rep.Valid {
@@ -81,19 +80,19 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 
 	t.Run("Rejet_Exoneration_Sans_Motif", func(t *testing.T) {
 		inv := validBaseInvoice()
-		inv.TaxSubtotals = []model.TaxSubtotal{
+		inv.Taxes = []model.TaxSubtotal{
 			{
-				TaxableAmount:   500.0,
-				TaxAmount:       0.0,
-				Percent:         0.0,
-				CategoryCode:    "E",
+				TaxableAmount:   decimal.NewFromFloat(500.0),
+				TaxAmount:       decimal.NewFromFloat(0.0),
+				Percent:         decimal.NewFromFloat(0.0),
+				TaxCategoryCode:    "E",
 				ExemptionReason: "", // Manquant
 			},
 		}
 
 		rep := v.Validate(inv)
 		if rep.Valid {
-			t.Fatalf("attendu rejet pour exonération sans motif légal")
+			t.Fatalf("attendu rejet pour exonÃ©ration sans motif lÃ©gal")
 		}
 		var found bool
 		for _, issue := range rep.Issues {
@@ -103,18 +102,18 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatalf("attendu règle FR-RULE-VAT-EXEMPT-REASON-01, obtenu: %+v", rep.Issues)
+			t.Fatalf("attendu rÃ¨gle FR-RULE-VAT-EXEMPT-REASON-01, obtenu: %+v", rep.Issues)
 		}
 	})
 
 	t.Run("Exoneration_Conforme_Avec_Motif", func(t *testing.T) {
 		inv := validBaseInvoice()
-		inv.TaxSubtotals = []model.TaxSubtotal{
+		inv.Taxes = []model.TaxSubtotal{
 			{
-				TaxableAmount:   500.0,
-				TaxAmount:       0.0,
-				Percent:         0.0,
-				CategoryCode:    "E",
+				TaxableAmount:   decimal.NewFromFloat(500.0),
+				TaxAmount:       decimal.NewFromFloat(0.0),
+				Percent:         decimal.NewFromFloat(0.0),
+				TaxCategoryCode:    "E",
 				ExemptionReason: "Article 262 ter I du CGI",
 			},
 		}
@@ -127,12 +126,12 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 
 	t.Run("Rejet_Client_FR_Sans_SIREN_SIRET", func(t *testing.T) {
 		inv := validBaseInvoice()
-		inv.Buyer.NationalID = ""
-		inv.Buyer.TaxID = ""
+		inv.Buyer.LegalID = ""
+		inv.Buyer.VATID = ""
 
 		rep := v.Validate(inv)
 		if rep.Valid {
-			t.Fatalf("attendu rejet acheteur français sans identifiant")
+			t.Fatalf("attendu rejet acheteur franÃ§ais sans identifiant")
 		}
 		var found bool
 		for _, issue := range rep.Issues {
@@ -142,7 +141,7 @@ func TestFranceCanonicalValidator_FiscalCoverage(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatalf("attendu règle FR-RULE-BUYER-ID-01, obtenu: %+v", rep.Issues)
+			t.Fatalf("attendu rÃ¨gle FR-RULE-BUYER-ID-01, obtenu: %+v", rep.Issues)
 		}
 	})
 }

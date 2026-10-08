@@ -1,4 +1,4 @@
-package compliance
+﻿package compliance
 
 import (
 	"fmt"
@@ -10,13 +10,13 @@ import (
 	"einvoice-saas/pkg/compliance/en16931"
 )
 
-// Dispatcher gère la validation transverse EN 16931 et le routage juridictionnel
+// Dispatcher gÃ¨re la validation transverse EN 16931 et le routage juridictionnel
 type Dispatcher struct {
 	enValidator *en16931.Validator
 	validators  map[string]model.JurisdictionValidator
 }
 
-// NewDispatcher initialise le répartiteur avec le socle EN 16931 et les profils nationaux
+// NewDispatcher initialise le rÃ©partiteur avec le socle EN 16931 et les profils nationaux
 func NewDispatcher() *Dispatcher {
 	d := &Dispatcher{
 		enValidator: en16931.NewValidator(),
@@ -32,13 +32,13 @@ func (d *Dispatcher) Register(v model.JurisdictionValidator) {
 	d.validators[strings.ToUpper(v.JurisdictionCode())] = v
 }
 
-// Validate exécute d'abord les règles socles EN 16931 puis les règles nationales
+// Validate exÃ©cute d'abord les rÃ¨gles socles EN 16931 puis les rÃ¨gles nationales
 func (d *Dispatcher) Validate(inv *model.CanonicalInvoice) (model.ValidationReport, error) {
 	if inv == nil {
 		return model.ValidationReport{}, fmt.Errorf("facture canonique nulle")
 	}
 
-	jurisdiction := strings.ToUpper(strings.TrimSpace(inv.TargetJurisdiction))
+	jurisdiction := strings.ToUpper(strings.TrimSpace(detectJurisdiction(inv)))
 	if jurisdiction == "" {
 		jurisdiction = "FR"
 	}
@@ -63,16 +63,16 @@ func (d *Dispatcher) Validate(inv *model.CanonicalInvoice) (model.ValidationRepo
 		}
 	}
 
-	// 2. Validation spécifique de juridiction
+	// 2. Validation spÃ©cifique de juridiction
 	validator, exists := d.validators[jurisdiction]
 	if !exists {
 		report.Valid = false
 		report.Issues = append(report.Issues, model.ValidationIssue{
 			RuleID:      "SYS-JURISDICTION-UNSUPPORTED",
-			Description: fmt.Sprintf("Aucun validateur actif configuré pour la juridiction: %s", jurisdiction),
+			Description: fmt.Sprintf("Aucun validateur actif configurÃ© pour la juridiction: %s", jurisdiction),
 			Severity:    model.SeverityError,
 			Field:       "TargetJurisdiction",
-			Remediation: "Vérifier le code pays cible ou activer le CountryProfile correspondant.",
+			Remediation: "VÃ©rifier le code pays cible ou activer le CountryProfile correspondant.",
 		})
 		return report, nil
 	}
@@ -84,4 +84,16 @@ func (d *Dispatcher) Validate(inv *model.CanonicalInvoice) (model.ValidationRepo
 	report.Issues = append(report.Issues, natReport.Issues...)
 
 	return report, nil
+}
+func detectJurisdiction(inv *model.CanonicalInvoice) string {
+if inv.Seller.CountryCode != "" {
+return inv.Seller.CountryCode
+}
+if inv.DocumentCurrency == "MAD" {
+return "MA"
+}
+if inv.DocumentCurrency == "EUR" {
+return "FR"
+}
+return "FR"
 }
