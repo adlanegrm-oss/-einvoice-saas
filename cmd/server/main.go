@@ -78,7 +78,15 @@ func main() {
 		log.Printf("[PERSISTENCE] Mode In-Memory actif (dev/test uniquement)")
 	}
 
-	invoiceSvc := service.NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
+	var invoiceSvc *service.InvoiceService
+	if db != nil {
+		invoiceSvc = service.NewInvoiceServiceWithTransactionRunner(
+			invRepo, evtRepo, idemRepo, valFn,
+			postgres.NewTransactionRunner(db),
+		)
+	} else {
+		invoiceSvc = service.NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
+	}
 
 	var keyStore middleware.APIKeyStore
 	if db != nil {

@@ -47,7 +47,7 @@ $6, $7, $8, $9, $10,
 $11, $12, $13, NOW(), NOW()
 )
 `
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := executorFor(ctx, r.db).ExecContext(ctx, query,
 		inv.TenantID,
 		inv.ID,
 		inv.InvoiceNumber,
@@ -117,7 +117,7 @@ status, document_sha256, COALESCE(document_storage_key, ''), created_at, updated
 FROM invoices
 WHERE tenant_id = $1 AND document_sha256 = $2
 `
-	row := r.db.QueryRowContext(ctx, query, tenantID, sha256Hash)
+	row := executorFor(ctx, r.db).QueryRowContext(ctx, query, tenantID, sha256Hash)
 
 	var inv repository.InvoiceRecord
 	var status string
@@ -149,11 +149,17 @@ WHERE tenant_id = $1 AND document_sha256 = $2
 }
 
 func (r *InvoiceRepo) UpdateStatus(ctx context.Context, tenantID, id string, targetStatus repository.InvoiceStatus) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+	tx, inSharedTx := ctx.Value(transactionContextKey{}).(*sql.Tx)
+	ownTx := !inSharedTx || tx == nil
+
+	var err error
+	if ownTx {
+		tx, err = r.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
 	}
-	defer func() { _ = tx.Rollback() }()
 
 	var currentStatusStr string
 	err = tx.QueryRowContext(ctx, `
@@ -181,5 +187,8 @@ WHERE tenant_id = $2 AND id = $3
 		return err
 	}
 
-	return tx.Commit()
+	if ownTx {
+		return tx.Commit()
+	}
+	return nil
 }

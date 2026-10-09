@@ -49,10 +49,11 @@ type IngestionResult struct {
 }
 
 type InvoiceService struct {
-	invoiceRepo     repository.InvoiceRepository
-	eventRepo       repository.EventRepository
-	idempotencyRepo repository.IdempotencyRepository
-	validateFn      ValidationPipelineFunc
+	invoiceRepo       repository.InvoiceRepository
+	eventRepo         repository.EventRepository
+	idempotencyRepo   repository.IdempotencyRepository
+	transactionRunner repository.TransactionRunner
+	validateFn        ValidationPipelineFunc
 }
 
 func NewInvoiceService(
@@ -69,157 +70,190 @@ func NewInvoiceService(
 	}
 }
 
+func NewInvoiceServiceWithTransactionRunner(
+	invRepo repository.InvoiceRepository,
+	evtRepo repository.EventRepository,
+	idemRepo repository.IdempotencyRepository,
+	valFn ValidationPipelineFunc,
+	runner repository.TransactionRunner,
+) *InvoiceService {
+	svc := NewInvoiceService(invRepo, evtRepo, idemRepo, valFn)
+	svc.transactionRunner = runner
+	return svc
+}
 func (s *InvoiceService) IngestInvoice(ctx context.Context, cmd IngestionCommand) (*IngestionResult, error) {
-	// 1. Calcul du digest SHA-256 du document brut
 	h := sha256.Sum256(cmd.RawXML)
 	docSHA256 := hex.EncodeToString(h[:])
 
-	// 2. Traitement d'idempotence technique et dÃ©tection de conflit de payload
+	lockKey := "doc:" + cmd.TenantID + ":" + docSHA256
 	if cmd.IdempotencyKey != "" {
-		existing, err := s.idempotencyRepo.Get(ctx, cmd.TenantID, cmd.IdempotencyKey)
-		if err == nil && existing != nil {
-			if existing.RequestHash != docSHA256 {
-				return nil, ErrIdempotencyConflict
+		lockKey = "idem:" + cmd.TenantID + ":" + cmd.IdempotencyKey
+	}
+
+	var result *IngestionResult
+
+	ingest := func(txCtx context.Context) error {
+		if cmd.IdempotencyKey != "" {
+			existing, err := s.idempotencyRepo.Get(txCtx, cmd.TenantID, cmd.IdempotencyKey)
+			if err == nil {
+				if existing == nil {
+					return fmt.Errorf("idempotency_lookup_returned_nil_record")
+				}
+				if existing.RequestHash != docSHA256 {
+					return ErrIdempotencyConflict
+				}
+
+				var cached IngestionResult
+				if err := json.Unmarshal(existing.ResponseBody, &cached); err != nil {
+					return fmt.Errorf("invalid_cached_idempotency_response: %w", err)
+				}
+				cached.IsIdempotentReplay = true
+				result = &cached
+				return nil
 			}
-			var cachedResult IngestionResult
-			if unmarshalErr := json.Unmarshal(existing.ResponseBody, &cachedResult); unmarshalErr == nil {
-				cachedResult.IsIdempotentReplay = true
-				return &cachedResult, nil
+			if !errors.Is(err, repository.ErrNotFound) {
+				return fmt.Errorf("failed_to_check_idempotency_key: %w", err)
 			}
 		}
-	}
 
-	// 3. DÃ©tection de doublon documentaire par SHA-256
-	existingDoc, err := s.invoiceRepo.GetBySHA256(ctx, cmd.TenantID, docSHA256)
-	if err == nil && existingDoc != nil {
-		return nil, ErrDuplicateDocument
-	}
-
-	// 4. ExÃ©cution du moteur de validation (Schematron -> Pivot -> Normatif -> Fiscal)
-	syntax, canonical, valid, valReport, valErr := s.validateFn(cmd.RawXML, cmd.Profile)
-	if valErr != nil {
-		return nil, fmt.Errorf("pipeline_failure: %w", valErr)
-	}
-
-	invoiceID := "INV-" + time.Now().UTC().Format("20060102150405.000")
-	var sellerID, buyerID, invNum, currency string
-	var issueDate time.Time
-	var totalTaxInc = decimal.Zero
-
-	if canonical != nil {
-		if canonical.ID != "" {
-			invoiceID = canonical.ID
+		existingDoc, err := s.invoiceRepo.GetBySHA256(txCtx, cmd.TenantID, docSHA256)
+		if err == nil {
+			if existingDoc != nil {
+				return ErrDuplicateDocument
+			}
+			return fmt.Errorf("document_lookup_returned_nil_record")
 		}
-		invNum = canonical.ID
-		sellerID = canonical.Seller.LegalID
-		buyerID = canonical.Buyer.LegalID
-		currency = canonical.DocumentCurrency
-		if parsed, err := time.Parse("2006-01-02", canonical.IssueDate); err == nil {
-			issueDate = parsed
+		if !errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("failed_to_check_duplicate_document: %w", err)
 		}
-		totalTaxInc = canonical.Totals.TaxInclusiveAmount
-	}
-	if issueDate.IsZero() {
-		issueDate = time.Now().UTC()
-	}
 
-	// 5. Persistance initiale en Ã©tat RECEIVED
-	invRecord := &repository.InvoiceRecord{
-		TenantID:          cmd.TenantID,
-		ID:                invoiceID,
-		InvoiceNumber:     invNum,
-		SellerIdentifier:  sellerID,
-		BuyerIdentifier:   buyerID,
-		IssueDate:         issueDate,
-		Currency:          currency,
-		TotalTaxInclusive: totalTaxInc,
-		Syntax:            syntax,
-		Profile:           string(cmd.Profile),
-		Status:            repository.StatusReceived,
-		DocumentSHA256:    docSHA256,
-	}
-
-	if err := s.invoiceRepo.Create(ctx, invRecord); err != nil {
-		return nil, fmt.Errorf("failed_to_persist_invoice: %w", err)
-	}
-
-	// 6. Transition vers VALIDATING (contrÃ´le strict de la machine Ã  Ã©tats)
-	if err := s.invoiceRepo.UpdateStatus(ctx, cmd.TenantID, invoiceID, repository.StatusValidating); err != nil {
-		return nil, fmt.Errorf("failed_to_set_validating_status: %w", err)
-	}
-
-	targetStatus := repository.StatusValidated
-	responseStatus := "accepted"
-	httpStatusCode := 202
-	if !valid {
-		targetStatus = repository.StatusRejected
-		responseStatus = "rejected"
-		httpStatusCode = 422
-	}
-
-	if err := s.invoiceRepo.UpdateStatus(ctx, cmd.TenantID, invoiceID, targetStatus); err != nil {
-		return nil, fmt.Errorf("failed_to_update_status: %w", err)
-	}
-
-	// 7. Scellement de la chaÃ®ne d'audit
-	nowUTC := time.Now().UTC()
-	auditPayload := evidence.AuditEvent{
-		TenantID:       cmd.TenantID,
-		InvoiceID:      invoiceID,
-		EventType:      string(targetStatus),
-		Actor:          cmd.Actor,
-		TimestampUTC:   nowUTC,
-		DocumentSHA256: docSHA256,
-		PayloadSummary: fmt.Sprintf("Syntax: %s, Profile: %s, Valid: %v", syntax, cmd.Profile, valid),
-		PreviousHash:   genesisHash,
-	}
-	currentHash := evidence.CalculateChainHash(&auditPayload)
-
-	eventRecord := &repository.InvoiceEventRecord{
-		TenantID:       cmd.TenantID,
-		InvoiceID:      invoiceID,
-		Sequence:       1,
-		EventID:        "ev_" + nowUTC.Format("150405.000"),
-		EventType:      string(targetStatus),
-		Actor:          cmd.Actor,
-		DocumentSHA256: docSHA256,
-		PayloadSummary: auditPayload.PayloadSummary,
-		PreviousHash:   genesisHash,
-		CurrentHash:    currentHash,
-		TimestampUTC:   nowUTC,
-	}
-
-	if err := s.eventRepo.Append(ctx, eventRecord); err != nil {
-		return nil, fmt.Errorf("audit_event_failed: %w", err)
-	}
-
-	result := &IngestionResult{
-		Status:           responseStatus,
-		InvoiceID:        invoiceID,
-		TenantID:         cmd.TenantID,
-		DocumentSHA256:   docSHA256,
-		AuditHash:        currentHash,
-		ValidationReport: valReport,
-	}
-
-	// 8. Enregistrement transactionnel du rÃ©sultat d'idempotence (erreur non masquÃ©e)
-	if cmd.IdempotencyKey != "" {
-		respBytes, err := json.Marshal(result)
-		if err != nil {
-			return nil, fmt.Errorf("failed_to_marshal_idempotency_payload: %w", err)
+		syntax, canonical, valid, valReport, valErr := s.validateFn(cmd.RawXML, cmd.Profile)
+		if valErr != nil {
+			return fmt.Errorf("pipeline_failure: %w", valErr)
 		}
-		if err := s.idempotencyRepo.Save(ctx, &repository.IdempotencyRecord{
+
+		now := time.Now().UTC()
+		invoiceID := "INV-" + now.Format("20060102150405.000")
+		var sellerID, buyerID, invNum, currency string
+		issueDate := now
+		totalTaxInc := decimal.Zero
+
+		if canonical != nil {
+			if canonical.ID != "" {
+				invoiceID = canonical.ID
+			}
+			invNum = canonical.ID
+			sellerID = canonical.Seller.LegalID
+			buyerID = canonical.Buyer.LegalID
+			currency = canonical.DocumentCurrency
+			if parsed, parseErr := time.Parse("2006-01-02", canonical.IssueDate); parseErr == nil {
+				issueDate = parsed
+			}
+			totalTaxInc = canonical.Totals.TaxInclusiveAmount
+		}
+
+		invRecord := &repository.InvoiceRecord{
+			TenantID:          cmd.TenantID,
+			ID:                invoiceID,
+			InvoiceNumber:     invNum,
+			SellerIdentifier:  sellerID,
+			BuyerIdentifier:   buyerID,
+			IssueDate:         issueDate,
+			Currency:          currency,
+			TotalTaxInclusive: totalTaxInc,
+			Syntax:            syntax,
+			Profile:           string(cmd.Profile),
+			Status:            repository.StatusReceived,
+			DocumentSHA256:    docSHA256,
+		}
+		if err := s.invoiceRepo.Create(txCtx, invRecord); err != nil {
+			if errors.Is(err, repository.ErrDuplicatePayload) {
+				return ErrDuplicateDocument
+			}
+			return fmt.Errorf("failed_to_persist_invoice: %w", err)
+		}
+
+		if err := s.invoiceRepo.UpdateStatus(txCtx, cmd.TenantID, invoiceID, repository.StatusValidating); err != nil {
+			return fmt.Errorf("failed_to_set_validating_status: %w", err)
+		}
+		targetStatus := repository.StatusValidated
+		responseStatus := "accepted"
+		httpStatusCode := 202
+		if !valid {
+			targetStatus = repository.StatusRejected
+			responseStatus = "rejected"
+			httpStatusCode = 422
+		}
+		if err := s.invoiceRepo.UpdateStatus(txCtx, cmd.TenantID, invoiceID, targetStatus); err != nil {
+			return fmt.Errorf("failed_to_update_invoice_status: %w", err)
+		}
+
+		auditPayload := evidence.AuditEvent{
 			TenantID:       cmd.TenantID,
-			Key:            cmd.IdempotencyKey,
-			RequestHash:    docSHA256,
 			InvoiceID:      invoiceID,
-			ResponseStatus: httpStatusCode,
-			ResponseBody:   respBytes,
-			ExpiresAt:      time.Now().Add(24 * time.Hour),
-		}); err != nil {
-			return nil, fmt.Errorf("failed_to_save_idempotency_key: %w", err)
+			EventType:      string(targetStatus),
+			Actor:          cmd.Actor,
+			TimestampUTC:   now,
+			DocumentSHA256: docSHA256,
+			PayloadSummary: fmt.Sprintf("Syntax: %s, Profile: %s, Valid: %v", syntax, cmd.Profile, valid),
+			PreviousHash:   genesisHash,
 		}
+		currentHash := evidence.CalculateChainHash(&auditPayload)
+
+		eventRecord := &repository.InvoiceEventRecord{
+			TenantID:       cmd.TenantID,
+			InvoiceID:      invoiceID,
+			Sequence:       1,
+			EventID:        "ev_" + now.Format("150405.000"),
+			EventType:      string(targetStatus),
+			Actor:          cmd.Actor,
+			DocumentSHA256: docSHA256,
+			PayloadSummary: auditPayload.PayloadSummary,
+			PreviousHash:   genesisHash,
+			CurrentHash:    currentHash,
+			TimestampUTC:   now,
+		}
+		if err := s.eventRepo.Append(txCtx, eventRecord); err != nil {
+			return fmt.Errorf("audit_event_failed: %w", err)
+		}
+
+		result = &IngestionResult{
+			Status:           responseStatus,
+			InvoiceID:        invoiceID,
+			TenantID:         cmd.TenantID,
+			DocumentSHA256:   docSHA256,
+			AuditHash:        currentHash,
+			ValidationReport: valReport,
+		}
+
+		if cmd.IdempotencyKey != "" {
+			respBytes, err := json.Marshal(result)
+			if err != nil {
+				return fmt.Errorf("failed_to_marshal_idempotency_payload: %w", err)
+			}
+			if err := s.idempotencyRepo.Save(txCtx, &repository.IdempotencyRecord{
+				TenantID:       cmd.TenantID,
+				Key:            cmd.IdempotencyKey,
+				RequestHash:    docSHA256,
+				InvoiceID:      invoiceID,
+				ResponseStatus: httpStatusCode,
+				ResponseBody:   respBytes,
+				ExpiresAt:      time.Now().Add(24 * time.Hour),
+			}); err != nil {
+				return fmt.Errorf("failed_to_save_idempotency_key: %w", err)
+			}
+		}
+		return nil
 	}
 
+	var err error
+	if s.transactionRunner != nil {
+		err = s.transactionRunner.WithinTransaction(ctx, lockKey, ingest)
+	} else {
+		err = ingest(ctx)
+	}
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }

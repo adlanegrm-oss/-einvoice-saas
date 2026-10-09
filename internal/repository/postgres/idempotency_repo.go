@@ -41,7 +41,7 @@ $1, $2, $3, $4,
 $5, $6, NOW(), $7
 )
 `
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := executorFor(ctx, r.db).ExecContext(ctx, query,
 		record.TenantID,
 		record.Key,
 		record.RequestHash,
@@ -64,7 +64,7 @@ response_status, response_body, created_at, expires_at
 FROM idempotency_keys
 WHERE tenant_id = $1 AND key = $2
 `
-	row := r.db.QueryRowContext(ctx, query, tenantID, key)
+	row := executorFor(ctx, r.db).QueryRowContext(ctx, query, tenantID, key)
 
 	var rec repository.IdempotencyRecord
 	err := row.Scan(
