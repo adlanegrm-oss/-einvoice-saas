@@ -1,0 +1,154 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Portail de Facturation Électronique (UE)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 40px; }
+        .container { max-width: 700px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: auto; }
+        h1 { color: #333; font-size: 22px; }
+        .dropzone { border: 2px dashed #007bff; padding: 30px; text-align: center; border-radius: 6px; background: #f1f8ff; cursor: pointer; margin-top: 20px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 15px; font-size: 14px; margin-right: 5px; }
+        button:hover { background: #0056b3; }
+        .btn-download { background: #28a745; }
+        .btn-download:hover { background: #218838; }
+        .btn-legal { background: #6f42c1; }
+        .btn-legal:hover { background: #5a32a3; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        #reportBox { margin-top: 15px; background: #f8f9fa; border: 1px solid #ced4da; padding: 15px; border-radius: 4px; display: none; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Portail Client : Contrôle & Signature de Factures PDF (UE)</h1>
+        <p>Glissez ou sélectionnez votre facture PDF pour l'auditer et la préparer aux normes européennes.</p>
+        
+        <form id="uploadForm">
+            <div class="dropzone" onclick="document.getElementById('fileInput').click()">
+                <p>Cliquez ici ou déposez votre facture PDF</p>
+                <input type="file" id="fileInput" name="invoiceFile" accept=".pdf" style="display:none;" required>
+                <span id="fileName" style="font-weight: bold; color: #007bff;"></span>
+            </div>
+            <button type="submit" id="submitBtn">Lancer le traitement</button>
+        </form>
+
+        <div id="result"></div>
+        <div id="reportBox"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileNameSpan = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const resultDiv = document.getElementById('result');
+        const reportBox = document.getElementById('reportBox');
+        let lastProcessedFileName = 'facture.pdf';
+        let lastDownloadUrl = '';
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileNameSpan.textContent = "Fichier sélectionné : " + fileInput.files[0].name;
+                lastProcessedFileName = fileInput.files[0].name;
+            }
+        });
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            formData.append('invoiceFile', fileInput.files[0]);
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = '';
+            resultDiv.textContent = 'Traitement en cours...';
+            reportBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (response.ok && data.status === 'success') {
+                    if (data.filename) lastProcessedFileName = data.filename;
+                    lastDownloadUrl = data.downloadUrl;
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `${data.message}<br><br>
+                        <button type="button" class="btn-download" onclick="downloadSignedPdf()">📥 Télécharger le PDF signé</button><br>
+                        <button type="button" class="btn-legal" onclick="downloadLegalReport()">⚖️ Télécharger le rapport Légal & Fiscal UE</button>`;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = data.message || 'Une erreur est survenue.';
+                }
+            } catch (err) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Erreur de connexion au serveur.';
+            }
+        });
+
+        async function downloadSignedPdf() {
+            if (!lastDownloadUrl) return;
+            try {
+                const res = await fetch(lastDownloadUrl);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "signed_" + lastProcessedFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } catch (e) {
+                alert("Erreur lors du téléchargement du PDF signé.");
+            }
+        }
+
+        async function downloadLegalReport() {
+            reportBox.style.display = 'block';
+            reportBox.textContent = 'Génération du rapport d\'audit légal, fiscal et annuaire TVA européen...';
+
+            try {
+                const res = await fetch(`/api/legal-report?file=${encodeURIComponent(lastProcessedFileName)}`);
+                if (!res.ok) throw new Error('Erreur HTTP: ' + res.status);
+                const rep = await res.json();
+                
+                const reportText = `=====================================================\n` +
+                    `     RAPPORT D'AUDIT LÉGAL & FISCAL EUROPÉEN\n` +
+                    `=====================================================\n` +
+                    `Fichier analysé   : ${rep.filename}\n` +
+                    `Cadre Normatif    : ${rep.european_standard}\n` +
+                    `Administration    : ${rep.administration}\n\n` +
+                    `[1] CONTRÔLE FISCAL DE LA TVA :\n` +
+                    ` > ${rep.tax_control}\n` +
+                    ` > ${rep.vat_validation}\n\n` +
+                    `[2] CONTRÔLE ANNUAIRE TVA (VIES / UE) :\n` +
+                    (rep.vat_directory_check ? rep.vat_directory_check.map(v => `   - ${v}`).join('\n') : '') + `\n\n` +
+                    `[3] AUDIT DE SIGNATURE & INTÉGRITÉ :\n` +
+                    ` > ${rep.signature_audit}\n\n` +
+                    `[4] VÉRIFICATIONS LÉGALES (EN 16931) :\n` +
+                    (rep.legal_checks ? rep.legal_checks.map(c => `   - ${c}`).join('\n') : '') + `\n\n` +
+                    `[5] ANOMALIES FISCALES :\n` +
+                    (rep.fiscal_anomalies ? rep.fiscal_anomalies.map(a => `   - ${a}`).join('\n') : '') + `\n` +
+                    `=====================================================`;
+
+                reportBox.textContent = reportText;
+
+                const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Rapport_Legal_Fiscal_${rep.filename}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } catch (e) {
+                reportBox.textContent = 'Erreur détaillée : ' + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
